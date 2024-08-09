@@ -4,9 +4,11 @@ import io
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def download_and_extract(model_id):
+
     url = f"https://www.ebi.ac.uk/biomodels/search/download?models={model_id}"
     response = requests.get(url)
     
+    # File OK
     if response.status_code == 200:
         zip_file = zipfile.ZipFile(io.BytesIO(response.content))
 
@@ -18,12 +20,18 @@ def download_and_extract(model_id):
                 with open(file_info.filename, 'wb') as xml_file:
                     xml_file.write(xml_content)
                 print(f"Extracted {file_info.filename} from {model_id}.zip")
+
+    # Error
     else:
         print(f"Failed to download {model_id}. Status code: {response.status_code}")
 
 def main():
-    with ThreadPoolExecutor(max_workers=10) as executor:  # Adjust max_workers based on your system capabilities
-        futures = [executor.submit(download_and_extract, f"BIOMD{i:010}") for i in range(1, 101)]
+
+    with ThreadPoolExecutor(max_workers=10) as executor: # Adjust maxc workers -- can test for optimal threads
+
+        NUMBER_OF_MODELS = 100
+        futures = [executor.submit(download_and_extract, f"BIOMD{i:010}") for i in range(1, NUMBER_OF_MODELS)]
+
         for future in as_completed(futures):
             future.result()  # If an exception was raised, this will re-raise it
 

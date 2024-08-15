@@ -1,4 +1,5 @@
 from neo4jsbml import arrows, connect, sbml
+from BiomodelsDownloader import BiomodelsDownloader
 
 class SbmlDatabase:
     """
@@ -80,10 +81,23 @@ class SbmlDatabase:
             model_id = f"BIOMD{i:010}.xml"
             self.load_and_import_model(model_id=model_id)
 
-    def check_model_updates(): # TODO
+    def check_model_updates(): # TODO: verify that each model is latest version
         pass
     
 
 if __name__ == "__main__":
+
+    # These models are all downloaded from the biomodels database
+    downloader = BiomodelsDownloader(num_models=20, threads=5, curatedOnly=True)
+    downloader.run() 
+
+    """
+    model.load_and_import_model() # manually add model by file name
+    this is how the user can add their own models / pipeline
+    """
+
+    # Creating Server with given schema, and neo4j configs [folder is where biomodels xml are stored and loaded]
     model = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
-    model.import_models(1, 5) 
+    
+    # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
+    model.import_models(1, 20) 

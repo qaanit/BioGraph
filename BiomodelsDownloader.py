@@ -100,7 +100,9 @@ class BiomodelsDownloader:
         return curationStatus
     
 
-# Usage 
+# Usage this is an example of how the doanloader should be called
+
 if __name__ == "__main__":
+
     downloader = BiomodelsDownloader(num_models=50, threads=10, curatedOnly=True)
     downloader.run()

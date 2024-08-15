@@ -20,6 +20,7 @@ class BiomodelsDownloader:
         num_models (int): The number of models to download. Default is 50.
         threads (int): The number of threads to use for parallel downloading. Default is 10.
         output_dir (str): The directory where the downloaded models will be stored. Default is "biomodels".
+        curatedOnly (bool):Only adds curated models to the database.  
 
         """
         self.base_url = base_url

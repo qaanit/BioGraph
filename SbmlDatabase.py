@@ -11,21 +11,23 @@ class SbmlDatabase:
     folder : str
         Directory where the SBML models are stored.
     modelisation_path : str
-        Path to the JSON file defining the modelisation/schema.     
+        Path to the JSON file defining the modelisation/schema. 
+    curatedOnly:
+        Only adds curated models to the database.    
     
     Methods:
     --------
     __init__(config_path, folder, modelisation_path):
         Initializes the Database with the provided configuration.
     
-    load_and_import_model(model_index):
-        Loads an SBML model by index, maps it, and imports it into Neo4j.
+    load_and_import_model(model_id):
+        Loads an SBML model by id, maps it, and imports it into Neo4j.
     
     import_models(range_start, range_end):
         Imports multiple SBML models into Neo4j over a specified range of indices.
     """
     
-    def __init__(self, config_path, folder, modelisation_path):
+    def __init__(self, config_path, folder, modelisation_path, curatedOnly):
         """
         Initializes Database with the provided configuration.
         
@@ -41,6 +43,7 @@ class SbmlDatabase:
         self.config_path = config_path
         self.folder = folder
         self.modelisation_path = modelisation_path
+        self.curatedOnly = curatedOnly
         self.connection = connect.Connect.from_config(path=config_path) # Connection object to interact with the Neo4j database.
         self.arr = arrows.Arrows.from_json(path=modelisation_path)
 
@@ -81,7 +84,8 @@ class SbmlDatabase:
 
     def check_model_updates(): # TODO
         pass
+    
 
 if __name__ == "__main__":
-    model = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
+    model = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json", curatedOnly=False)
     model.import_models(1, 5) 

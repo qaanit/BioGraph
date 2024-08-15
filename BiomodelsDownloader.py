@@ -3,6 +3,7 @@ import zipfile
 import io
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from biomodels_restful_api_client import services as bmservices
 
 class BiomodelsDownloader:
     """
@@ -11,7 +12,7 @@ class BiomodelsDownloader:
     This can be done in parallel depending on the number of threads allocated
     """
 
-    def __init__(self, base_url="https://www.ebi.ac.uk/biomodels/search/download", num_models=50, threads=10, output_dir="biomodels"):
+    def __init__(self, base_url="https://www.ebi.ac.uk/biomodels/search/download", num_models=50, threads=10, output_dir="biomodels", curatedOnly=True):
         """
         Initialize the downloader with the base URL and configuration for downloading.
 
@@ -25,6 +26,7 @@ class BiomodelsDownloader:
         self.num_models = num_models
         self.max_workers = threads
         self.output_dir = output_dir
+        self.curatedOnly = curatedOnly
 
         # Ensure the output directory exists
         if not os.path.exists(self.output_dir):
@@ -40,6 +42,11 @@ class BiomodelsDownloader:
         Returns:
             bool: True if the download and extraction were successful, False otherwise.
         """
+
+        if self.curatedOnly:
+            if not self.check_curation_status(model_id):
+                print(model_id, ": not curated")
+                return False
 
         url = f"{self.base_url}?models={model_id}"
         response = requests.get(url)
@@ -57,6 +64,7 @@ class BiomodelsDownloader:
                     with open(output_path, 'wb') as xml_file:
                         xml_file.write(xml_content)
                     print(f"Extracted {file_info.filename} to {self.output_dir}")
+
             return True
         
         # Non OK response
@@ -77,11 +85,21 @@ class BiomodelsDownloader:
             for future in as_completed(futures):
                 future.result()  # Re-raise any exception that was caught during execution
     
-    
-    def verify():   # TODO: Verify downloaded biomodels
+
+    def check_exist_and_up_to_date(self): # TODO: check if biomodel exists and latest version
         pass
+
+    def check_curation_status(self, model_id): # TODO: check if biomodel is curated 
+        """
+        Queries the restful biomodels api and returns curation status of selected model
+        """
+
+        model = bmservices.get_model_info(model_id)
+        curationStatus = model['curationStatus']
+        return curationStatus
+    
 
 # Usage 
 if __name__ == "__main__":
-    downloader = BiomodelsDownloader(num_models=50, threads=10)
+    downloader = BiomodelsDownloader(num_models=50, threads=10, curatedOnly=True)
     downloader.run()

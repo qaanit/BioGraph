@@ -38,7 +38,7 @@ class BiomodelsDownloader:
         if self.num_models == -1:
             self.num_models = len(self.curated_models) if self.curatedOnly else (len(self.curated_models) + len(self.uncurated_models))
 
-        # Ensure the output directory exists
+        # Ensure output directory exists
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
@@ -95,20 +95,24 @@ class BiomodelsDownloader:
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
 
-            futures = [executor.submit(self.download_and_extract, downloadable_models[i]) 
-                       for i in range(0, self.num_models)]
+            futures = [executor.submit(self.download_and_extract, model) 
+                       for model in downloadable_models]
             
             for future in as_completed(futures):
                 future.result()  # Re-raise any Unsuccesful Download that was caught during execution
     
 
-    def verifiy_models(self): # TODO: check if biomodel exists and latest version
+    def verifiy_models(self): 
+        
+        """
+        Checks that all the models listed on the biomodels database are downloaded and 
+        Downloads missing modesl
+        """
         
         self.check_available_models()
         
         damaged_lost_models = []
         path = self.output_dir
-        print(len(self.curated_models))
 
         for model in self.curated_models:
 
@@ -117,9 +121,7 @@ class BiomodelsDownloader:
                 print(model)
                 damaged_lost_models.append(model)
 
-        if len(damaged_lost_models) == 0:
-            print("All models up to date")
-            return 
+        # print(f"[{len(damaged_lost_models)}/{len(self.curated_models)}] - models damaged or lost")
 
         for model in damaged_lost_models:
             self.download_and_extract(model)
@@ -143,6 +145,7 @@ class BiomodelsDownloader:
         self.uncurated_models = [model for model in model_names if model.startswith("MODEL")]
 
         # SERVER ISSUES WITH FEW PROBLAMATIC MODELS - can be removed if resolved
+        # According to docs these models do not contain sbml/xml files 
         problematic_models = ["BIOMD0000001069", "BIOMD0000001075", "BIOMD0000001066", "BIOMD0000001067", "BIOMD0000001068", "BIOMD0000001070", 
                               "BIOMD0000001071", "BIOMD0000001073", "BIOMD0000001074", "BIOMD0000001076"]
         

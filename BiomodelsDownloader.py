@@ -118,14 +118,31 @@ class BiomodelsDownloader:
 
             model_file = f"{path}/{model}.xml"
             if not os.path.isfile(model_file):
-                print(model)
                 damaged_lost_models.append(model)
+            else:
+                pass
+                """ Check that the model is latest version according to biomodels api 
+                    This is done by checking file size on machine vs api file size
+                    Model will be redownloaded if not latest version
+                    Slows down the verify stage a bit
+                """
+                """
+                metadata_url = f"https://www.ebi.ac.uk/biomodels/model/files/{model}?format=json"
+                response = requests.get(metadata_url).json()
+                url_file_size = response["main"][0]["fileSize"]
+                os_file_size = str(os.path.getsize(model_file))
+                
+                if url_file_size != os_file_size:
+                    damaged_lost_models.append(model)
+                    print("Version not up to date")
+                """
 
         # print(f"[{len(damaged_lost_models)}/{len(self.curated_models)}] - models damaged or lost")
 
         for model in damaged_lost_models:
             self.download_and_extract(model)
 
+        return damaged_lost_models # list returned is for removal of old model and and adding new model to the database
 
     def check_available_models(self):
         """
@@ -152,9 +169,7 @@ class BiomodelsDownloader:
         for p in problematic_models:
             self.curated_models.remove(p)
 
-       
-        
-    
+
 # Usage this is an example of how the downloader should be called
 
 if __name__ == "__main__":

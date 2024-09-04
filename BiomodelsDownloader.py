@@ -4,7 +4,7 @@ import io
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-class BiomodelsDownloader:
+class BiomodelsDownloader: # TODO: some methods uncalled private?
     """
     A class to handle the downloading and extraction of model files from the biomodels database.
     A specified amount of zipfiles are downloaded and then extracted to a common folder.
@@ -29,7 +29,9 @@ class BiomodelsDownloader:
         self.curatedOnly = curatedOnly
         self.curated_models = []
         self.uncurated_models = []
-        self.lost_damaged_models = []
+        self.lost_damaged_models = [] 
+
+        # TODO: simplify list data storage
 
         # Query biomodels for available models
         self.check_available_models()
@@ -86,7 +88,10 @@ class BiomodelsDownloader:
     def run(self, download_missing_models=False):
         """
         Start the download and extraction process for all models in parallel.
+        Based on parameter data - a select number of models will be downloaded
+        download_missing_models=False : all missing models will be downloaded
         """
+
         downloadable_models = self.curated_models
 
         if download_missing_models:
@@ -111,20 +116,25 @@ class BiomodelsDownloader:
     def verifiy_models(self): 
         
         """
-        Checks that all the models listed on the biomodels database are downloaded and 
-        Downloads missing modesl
+        Checks if models listed on biomodels API are downloaded, and up to date 
+        if not, will start the download process for lost/damaged models
+
+        returns: list of new/updated models -> to be added/readded to database (manage collsions)
         """
         
+        # update current models
         self.check_available_models()
         
         damaged_lost_models = []
         path = self.output_dir
 
+        # Check if models exists
         for model in self.curated_models:
 
             model_file = f"{path}/{model}.xml"
             if not os.path.isfile(model_file):
                 damaged_lost_models.append(model)
+
             else:
                 pass
                 """ Check that the model is latest version according to biomodels api 
@@ -150,12 +160,13 @@ class BiomodelsDownloader:
         # redownload missing models in parallel
         self.run(download_missing_models=True)
 
+        # returns new/updated models
         self.lost_damaged_models = []
         return damaged_lost_models
 
     def check_available_models(self):
         """
-        Queries the restful biomodels api and returns a list of all curated and non curated models 
+        Queries the restful biomodels api and returns a list of all curated and non curated models - removes problematic models 
         """
 
         url = "https://www.ebi.ac.uk/biomodels/model/identifiers?format=json"
@@ -183,6 +194,7 @@ class BiomodelsDownloader:
 
 if __name__ == "__main__":
 
+    # create downloder
     downloader = BiomodelsDownloader(threads=10, curatedOnly=True)
 
     # all models will be downloaded

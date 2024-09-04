@@ -55,8 +55,8 @@ class SbmlDatabase:
             Name/Number of the model to be imported
         """
 
-        path_model = self.folder + "/" + model_id
-        tag = path_model
+        path_model = self.folder + "/" + model_id + ".xml"
+        tag = model_id # Inlcude model version 
         sbm = sbml.SbmlToNeo4j.from_sbml(path=path_model, tag=tag)
 
         # Mapping
@@ -77,19 +77,23 @@ class SbmlDatabase:
         range_end : int
             Ending index for the SBML models.
         """
-        for i in range(range_start, range_end + 1):
-            model_id = f"BIOMD{i:010}.xml"
+        for i in range(range_start, range_end):
+            model_id = f"BIOMD{i:010}"
             self.load_and_import_model(model_id=model_id)
 
     def check_model_updates(): # TODO: verify that each model is latest version
+        # when creating models we can a version to the name, that way we can check for updates
+        # delete olkd models and add new eg. BIOMD000000001V3 -- version3 
+        # can compare to api available version
         pass
     
 
 if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
-    downloader = BiomodelsDownloader(num_models=20, threads=5, curatedOnly=True)
-    downloader.run() 
+    # downloader = BiomodelsDownloader(num_models=5, threads=5, curatedOnly=True)
+    # models = downloader.verify() -- will download all models
+    # returns a list of all new models downloaded or updated
 
     """
     model.load_and_import_model() # manually add model by file name
@@ -100,4 +104,6 @@ if __name__ == "__main__":
     model = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
     
     # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
-    model.import_models(1, 20) 
+    model.import_models(1, 10) 
+
+    

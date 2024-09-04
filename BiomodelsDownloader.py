@@ -29,6 +29,7 @@ class BiomodelsDownloader:
         self.curatedOnly = curatedOnly
         self.curated_models = []
         self.uncurated_models = []
+        self.lost_damaged_models = []
 
         # Query biomodels for available models
         self.check_available_models()
@@ -82,16 +83,21 @@ class BiomodelsDownloader:
             return False
 
 
-    def run(self): # TODO: could make run automatically as soon as object created
+    def run(self, download_missing_models=False):
         """
         Start the download and extraction process for all models in parallel.
         """
-        downloadable_models = []
+        downloadable_models = self.curated_models
 
+        if download_missing_models:
+            downloadable_models = self.lost_damaged_models
+
+        """
         if self.curatedOnly:
             downloadable_models = self.curated_models
         else:
             downloadable_models = self.curated_models + self.uncurated_models
+        """
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
 
@@ -137,12 +143,15 @@ class BiomodelsDownloader:
                     print("Version not up to date")
                 """
 
-        # print(f"[{len(damaged_lost_models)}/{len(self.curated_models)}] - models damaged or lost")
+        print(f"[{len(damaged_lost_models)}/{len(self.curated_models)}] - models damaged or lost")
 
-        for model in damaged_lost_models:
-            self.download_and_extract(model)
+        self.lost_damaged_models = damaged_lost_models
 
-        return damaged_lost_models # list returned is for removal of old model and and adding new model to the database
+        # redownload missing models in parallel
+        self.run(download_missing_models=True)
+
+        self.lost_damaged_models = []
+        return damaged_lost_models
 
     def check_available_models(self):
         """
@@ -175,7 +184,6 @@ class BiomodelsDownloader:
 if __name__ == "__main__":
 
     downloader = BiomodelsDownloader(threads=10, curatedOnly=True)
-    # This can be a select models, and the run can be a confirm -- unless that can be done by gui exclusively 
-    # then this should be done in one step 
-    # downloader.run()
+
+    # all models will be downloaded
     downloader.verifiy_models()

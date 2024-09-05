@@ -11,42 +11,31 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
     This can be done in parallel depending on the number of threads allocated
     """
 
-    def __init__(self, base_url="https://www.ebi.ac.uk/biomodels/search/download", num_models=-1, threads=10, output_dir="biomodels", curatedOnly=True):
+    def __init__(self, base_url="https://www.ebi.ac.uk/biomodels/search/download", threads=10, output_dir="biomodels", curatedOnly=True):
         """
         Initialize the downloader with the base URL and configuration for downloading.
 
         base_url (str): The base URL for downloading the models. Default is "https://www.ebi.ac.uk/biomodels/search/download".
-        num_models (int): The number of models to download. Default is -1 = all models. This will be changed to length of curated models.
         threads (int): The number of threads to use for parallel downloading. Default is 10.
         output_dir (str): The directory where the downloaded models will be stored. Default is "biomodels".
         curatedOnly (bool):Only adds curated models to the database.  
 
         """
         self.base_url = base_url
-        self.num_models = num_models
         self.max_workers = threads
         self.output_dir = output_dir
         self.curatedOnly = curatedOnly
         self.curated_models = []
         self.uncurated_models = []
-        self.lost_damaged_models = [] 
+        self.missing_damaged_models = [] 
 
         # TODO: simplify list data storage
-
-        # Query biomodels for available models
-        self.check_available_models()
-
-        # If a number of models is not specifified, it is presumed to be all
-        # handles whether uncurated models are included
-        if self.num_models == -1:
-            self.num_models = len(self.curated_models) if self.curatedOnly else (len(self.curated_models) + len(self.uncurated_models))
 
         # Ensure output directory exists
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
         
-
     def download_and_extract(self, model_id):
         """
         Download the zip file for a given model ID and extract the XML file.
@@ -66,7 +55,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
             
             zip_file = zipfile.ZipFile(io.BytesIO(response.content))
             
-            # Extract xml from downloaded zip file
+            # Extract xml from downloaded zip file 
             for file_info in zip_file.infolist():
                 
                 if file_info.filename.endswith('.xml'):
@@ -79,23 +68,20 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
 
             return True
         
-        # Non OK response
+        # Non OK response - Error downloading file
         else:
             print(f"Failed to download {model_id}. Status code: {response.status_code}")
             return False
 
 
-    def run(self, download_missing_models=False):
+    def run(self):
         """
         Start the download and extraction process for all models in parallel.
         Based on parameter data - a select number of models will be downloaded
         download_missing_models=False : all missing models will be downloaded
         """
-
-        downloadable_models = self.curated_models
-
-        if download_missing_models:
-            downloadable_models = self.lost_damaged_models
+            
+        downloadable_models = self.missing_damaged_models
 
         """
         if self.curatedOnly:
@@ -125,15 +111,15 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
         # update current models
         self.check_available_models()
         
-        damaged_lost_models = []
+        self.missing_damaged_models = []
         path = self.output_dir
 
         # Check if models exists
-        for model in self.curated_models:
+        for model in self.curated_models:   # TODO: Add non-curated - may need to change some logic
 
             model_file = f"{path}/{model}.xml"
             if not os.path.isfile(model_file):
-                damaged_lost_models.append(model)
+                self.missing_damaged_models.append(model)
 
             else:
                 pass
@@ -153,16 +139,15 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
                     print("Version not up to date")
                 """
 
-        print(f"[{len(damaged_lost_models)}/{len(self.curated_models)}] - models damaged or lost")
-
-        self.lost_damaged_models = damaged_lost_models
+        print(f"[{len(self.missing_damaged_models)}/{len(self.curated_models)}] - models damaged or lost")
 
         # redownload missing models in parallel
-        self.run(download_missing_models=True)
+        self.run()
 
         # returns new/updated models
-        self.lost_damaged_models = []
-        return damaged_lost_models
+        temp = self.missing_damaged_models
+        self.missing_damaged_models = []
+        return temp
 
     def check_available_models(self):
         """
@@ -172,7 +157,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
         url = "https://www.ebi.ac.uk/biomodels/model/identifiers?format=json"
         response = requests.get(url).json()
 
-        # Extract list of models from json 
+        # Extract list of avaialble models from json 
         model_names = response["models"]
 
         # Split models into curated and uncurated using list comprehensions 
@@ -183,10 +168,10 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
 
         # SERVER ISSUES WITH FEW PROBLAMATIC MODELS - can be removed if resolved
         # According to docs these models do not contain sbml/xml files 
-        problematic_models = ["BIOMD0000001069", "BIOMD0000001075", "BIOMD0000001066", "BIOMD0000001067", "BIOMD0000001068", "BIOMD0000001070", 
+        curated_problematic_models = ["BIOMD0000001069", "BIOMD0000001075", "BIOMD0000001066", "BIOMD0000001067", "BIOMD0000001068", "BIOMD0000001070", 
                               "BIOMD0000001071", "BIOMD0000001073", "BIOMD0000001074", "BIOMD0000001076"]
         
-        for p in problematic_models:
+        for p in curated_problematic_models:
             self.curated_models.remove(p)
 
 
@@ -197,5 +182,10 @@ if __name__ == "__main__":
     # create downloder
     downloader = BiomodelsDownloader(threads=10, curatedOnly=True)
 
-    # all models will be downloaded
+    # all models will be searched for and downloaded if missing/damaged - no need to call run 
+    # TODO: make unused methods private (run)
+    # TODO: non-curated ?? + logic
+    # TODO: method for changing server
+    # TODO: method for changing search directory ??
     downloader.verifiy_models()
+    downloader.verifiy_models() # second check

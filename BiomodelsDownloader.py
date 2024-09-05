@@ -145,9 +145,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
         self.run()
 
         # returns new/updated models
-        temp = self.missing_damaged_models
-        self.missing_damaged_models = []
-        return temp
+        return self.missing_damaged_models
 
     def check_available_models(self):
         """

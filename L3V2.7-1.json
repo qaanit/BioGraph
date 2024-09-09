@@ -98,6 +98,7 @@
         "Model"
       ],
       "properties": {
+        "id": "",
         "extentUnits": "",
         "timeUnits": ""
       },
@@ -114,6 +115,7 @@
         "Unit"
       ],
       "properties": {
+        "id": "",
         "kind": "",
         "exponent": "",
         "scale": "",
@@ -168,6 +170,7 @@
         "KineticLaw"
       ],
       "properties": {
+        "id": "",
         "formula": ""
       },
       "style": {}

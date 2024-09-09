@@ -50,7 +50,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
         url = f"{self.base_url}?models={model_id}"
         response = requests.get(url)
         
-        # OK response
+        # OK response - File downloaded
         if response.status_code == 200:
             
             zip_file = zipfile.ZipFile(io.BytesIO(response.content))
@@ -128,16 +128,16 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
                     Model will be redownloaded if not latest version
                     Slows down the verify stage a bit
                 """
-                """
+                """  
                 metadata_url = f"https://www.ebi.ac.uk/biomodels/model/files/{model}?format=json"
                 response = requests.get(metadata_url).json()
                 url_file_size = response["main"][0]["fileSize"]
                 os_file_size = str(os.path.getsize(model_file))
                 
                 if url_file_size != os_file_size:
-                    damaged_lost_models.append(model)
-                    print("Version not up to date")
-                """
+                    self.missing_damaged_models.append(model)
+                    print(f"{model} version not up to date")
+                """  
 
         print(f"[{len(self.missing_damaged_models)}/{len(self.curated_models)}] - models damaged or lost")
 
@@ -178,12 +178,11 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
 if __name__ == "__main__":
 
     # create downloder
-    downloader = BiomodelsDownloader(threads=10, curatedOnly=True)
+    downloader = BiomodelsDownloader()
 
     # all models will be searched for and downloaded if missing/damaged - no need to call run 
     # TODO: make unused methods private (run)
     # TODO: non-curated ?? + logic
-    # TODO: method for changing server
-    # TODO: method for changing search directory ??
+
     downloader.verifiy_models()
     downloader.verifiy_models() # second check

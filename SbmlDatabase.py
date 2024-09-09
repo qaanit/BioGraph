@@ -23,8 +23,15 @@ class SbmlDatabase:
     load_and_import_model(model_id):
         Loads an SBML model by id, maps it, and imports it into Neo4j.
     
-    import_models(range_start, range_end):
-        Imports multiple SBML models into Neo4j over a specified range of indices.
+    import_models(model_list):
+        Imports multiple SBML models into Neo4j.
+
+    check_model_exists(model_id):
+        check if database contains a model
+
+    delete_model(model_id):
+        deltes model from databse
+
     """
     
     def __init__(self, config_path, folder, modelisation_path):
@@ -50,49 +57,89 @@ class SbmlDatabase:
     def load_and_import_model(self, model_id):
         """
         Loads an SBML model by index, maps it, and imports it into Neo4j.
+        
+        NB! Load and import models uses neo4jsbml 
+        -- connection is loaded via this package
+        -- it uses a single neo4jsbml connection established in the constructor
 
         model_id : int
             Name/Number of the model to be imported
         """
 
+        # RESOLVE CONFLICTS -- Database needs to be queried -- remove old model and continue as usual
+        if self.check_model_exists(model_id):
+            self.delete_model(model_id)
+            print(f"Deleting old model {model_id}")
+
+        # ADD NEW MODELS
         path_model = self.folder + "/" + model_id + ".xml"
         tag = model_id # Inlcude model version 
         sbm = sbml.SbmlToNeo4j.from_sbml(path=path_model, tag=tag)
 
-        # Mapping
+        # Mapping sbml to graph
         nod = sbm.format_nodes(nodes=self.arr.nodes)
         rel = sbm.format_relationships(relationships=self.arr.relationships)
 
-        # Import into Neo4j
+        # Import graph into Neo4j
         self.connection.create_nodes(nodes=nod)
         self.connection.create_relationships(relationships=rel)
 
-
-    def import_models(self, range_start, range_end):
-        """
-        Imports multiple SBML models into Neo4j over a specified range of indices.
-
-        range_start : int
-            Starting index for the SBML models.
-        range_end : int
-            Ending index for the SBML models.
-        """
-        for i in range(range_start, range_end):
-            model_id = f"BIOMD{i:010}"
-            self.load_and_import_model(model_id=model_id)
-
-    def check_model_updates(): # TODO: verify that each model is latest version
-        # when creating models we can a version to the name, that way we can check for updates
-        # delete olkd models and add new eg. BIOMD000000001V3 -- version3 
-        # can compare to api available version
-        pass
+        return
     
+
+    def import_models(self, model_list):
+        """
+        Imports multiple SBML models into Neo4j specified by a list containing model numbers
+
+        """
+
+        if not model_list:
+            print("No new models added")
+            return
+
+
+        for model in model_list:
+            self.load_and_import_model(model)
+
+        return
+
+    def check_model_exists(self, model_id):
+
+        """
+        Query the current database, to see if model exists
+            -- used to removed old models when it is updated
+            -- prevent duplicate models
+
+        Return:
+            bool: True if model is found, False if not found
+        """
+
+        query = f"""MATCH (n) WHERE n.tag="{model_id}" RETURN (n)"""
+        
+        result = self.connection.query(query, expect_data=True)
+        
+        if not result:
+            return False
+        else:
+            return True
+
+    
+    def delete_model(self, model_id):
+        """
+        Queries database to delete a model based on tag
+            -- deletes all nodes and relationships belonging to a node is 
+        """
+
+        query = f"""MATCH (n) WHERE n.tag="{model_id}" DETACH DELETE n"""
+        self.connection.query(query, expect_data=False)
+        
+        
 
 if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
-    # downloader = BiomodelsDownloader(num_models=5, threads=5, curatedOnly=True)
-    # models = downloader.verify() -- will download all models
+    downloader = BiomodelsDownloader(threads=5, curatedOnly=True)
+    models = downloader.verifiy_models() # will download all models
     # returns a list of all new models downloaded or updated
 
     """
@@ -101,9 +148,15 @@ if __name__ == "__main__":
     """
 
     # Creating Server with given schema, and neo4j configs [folder is where biomodels xml are stored and loaded]
-    model = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
+    database = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
     
     # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
-    model.import_models(1, 10) 
-
     
+    # test for updating models
+    # database.import_models(["BIOMD0000000001"])
+
+    # Test to see if load_and_import, delete_model and check_model_exists()
+    #database.load_and_import_model("BIOMD0000000001")
+    #print(database.check_model_exist("BIOMD0000000001"))
+    #database.delete_model("BIOMD0000000001")
+    #print(database.check_model_exists("BIOMD0000000001"))

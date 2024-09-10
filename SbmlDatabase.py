@@ -141,81 +141,156 @@ class SbmlDatabase:
             > ........
         """
 
-        query = f"""// Define parameters for the two graphs to compare
-        WITH '{model_id1}' AS graph1_id, '{model_id2}' AS graph2_id
+        query = f"""
+            // Define parameters for the two graphs to compare
+            WITH '{model_id1}' AS graph1_id, '{model_id2}' AS graph2_id
 
-        // Define weights for different similarity aspects (adjust as needed)
-        WITH graph1_id, graph2_id,
-            0.5 AS w_structure,
-            0.5 AS w_children
+            // Define weights for different similarity aspects (adjust as needed)
+            WITH graph1_id, graph2_id,
+                0.5 AS w_structure,
+                0.5 AS w_children
 
-        // Compare nodes
-        MATCH (n1:Model {{id: graph1_id}})
-        MATCH (n2:Model {{id: graph2_id}})
+            // Compare nodes
+            MATCH (n1:Model {{id: graph1_id}})
+            MATCH (n2:Model {{id: graph2_id}})
 
-        // Compare number of nodes and relationships
-        WITH n1, n2, w_structure, w_children,
-            count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n1_elements,
-            count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n2_elements,
-            count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n1_relationships,
-            count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n2_relationships
+            // Compare number of nodes and relationships
+            WITH n1, n2, w_structure, w_children,
+                count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n1_elements,
+                count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n2_elements,
+                count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n1_relationships,
+                count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n2_relationships
 
-        // Calculate structural similarity
-        WITH n1, n2, w_structure, w_children,
-            CASE WHEN n1_elements = n2_elements AND n1_relationships = n2_relationships THEN 1.0
-                ELSE (
-                    (1.0 - abs(n1_elements - n2_elements) / toFloat(n1_elements + n2_elements)) * 0.5 +
-                    (1.0 - abs(n1_relationships - n2_relationships) / toFloat(n1_relationships + n2_relationships)) * 0.5
-                )
-            END AS structural_similarity
+            // Calculate structural similarity
+            WITH n1, n2, w_structure, w_children,
+                CASE WHEN n1_elements = n2_elements AND n1_relationships = n2_relationships THEN 1.0
+                    ELSE (
+                        (1.0 - abs(n1_elements - n2_elements) / toFloat(n1_elements + n2_elements)) * 0.5 +
+                        (1.0 - abs(n1_relationships - n2_relationships) / toFloat(n1_relationships + n2_relationships)) * 0.5
+                    )
+                END AS structural_similarity
 
-        // Compare child nodes (Compartments, Species, Reactions, etc.)
-        MATCH (n1)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child1)
-        MATCH (n2)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child2)
-        WHERE labels(child1) = labels(child2)
+            // Compare child nodes (Compartments, Species, Reactions, etc.)
+            MATCH (n1)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child1)
+            MATCH (n2)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child2)
+            WHERE labels(child1) = labels(child2)
 
-        WITH n1, n2, w_structure, w_children,
-            structural_similarity,
-            collect(child1) AS children1, collect(child2) AS children2
+            WITH n1, n2, w_structure, w_children,
+                structural_similarity,
+                collect(child1) AS children1, collect(child2) AS children2
 
-        // Calculate child node similarity
-        WITH n1, n2, w_structure, w_children,
-            structural_similarity,
-            children1, children2,
-            size(children1) AS total_children
+            // Calculate child node similarity
+            WITH n1, n2, w_structure, w_children,
+                structural_similarity,
+                children1, children2,
+                size(children1) AS total_children
 
-        UNWIND children2 AS c2
-        WITH n1, n2, w_structure, w_children,
-            structural_similarity,
-            children1, total_children, collect(c2.id) AS children2_ids
+            UNWIND children2 AS c2
+            WITH n1, n2, w_structure, w_children,
+                structural_similarity,
+                children1, total_children, collect(c2.id) AS children2_ids
 
-        WITH n1, n2, w_structure, w_children,
-            structural_similarity,
-            total_children,
-            CASE WHEN total_children > 0
-                THEN toFloat(size([c1 IN children1 WHERE c1.id IN children2_ids])) / total_children
-                ELSE 1.0
-            END AS children_similarity
-            
-        // Calculate final similarity score
-        WITH 
-            structural_similarity * w_structure +
-            children_similarity * w_children
-            AS similarity_score
+            // calculation
+            WITH n1, n2, w_structure, w_children,
+                structural_similarity,
+                total_children,
+                CASE WHEN total_children > 0
+                    THEN toFloat(size([c1 IN children1 WHERE c1.id IN children2_ids])) / total_children
+                    ELSE 1.0
+                END AS children_similarity
 
-        RETURN similarity_score"""
+            // Calculate final similarity score
+            WITH 
+                structural_similarity * w_structure +
+                children_similarity * w_children
+                AS similarity_score
+
+            RETURN similarity_score
+            """
 
         result = self.connection.query(query, expect_data=True) # this accuracy is not parsed
         accuracy = result[0]['similarity_score']
 
         return accuracy
     
+
+    def search_for_compartment(self, compartment):
+        """
+        DOCS:...
+        """
+
+        query = f"""
+                MATCH (m:Model)-[:HAS_COMPARTMENT]->(c:Compartment)
+                WHERE c.id = "{compartment}"
+                RETURN m
+                """
+        result = self.connection.query(query, expect_data=True)
+
+        if not result:
+            print("No models found")
+            return
     
+        matching_models = set()
+
+        for model in result:
+            matching_models.add(model["m"]["name"])
+
+        return list(matching_models)
+
+    def search_for_compound(self, compound):
+        """
+        DOCS:...
+        """
+
+        query = f"""
+                MATCH (m:Model)-[:HAS_SPECIES]->(s:Species)
+                WHERE s.id = "{compound}"
+                RETURN m
+                """
+        result = self.connection.query(query, expect_data=True)
+
+        if not result:
+            print("No models found")
+            return
+        
+        matching_models = set()
+
+        for model in result:
+            matching_models.add(model["m"]["name"])
+
+        return list(matching_models)
+
+
+    def search_compound_in_compartment(self, compound, compartment):
+        """
+            DOCS:...
+        """
+
+        query = f"""
+                MATCH (m:Model)-[:HAS_SPECIES]->(s:Species)-[:IN_COMPARTMENT]->(c:Compartment)
+                WHERE s.id = "{compound}" AND c.id = "{compartment}"
+                RETURN m
+                """
+
+        result = self.connection.query(query, expect_data=True)
+
+        if not result:
+            print("No models found")
+            return
+        
+        matching_models = set()
+
+        for model in result:
+            matching_models.add(model["m"]["name"])
+
+        return list(matching_models)
+
+
 if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
     downloader = BiomodelsDownloader(threads=5, curatedOnly=True)
-    models = downloader.verifiy_models() # will download all models
+    # models = downloader.verifiy_models() # will download all models
     # returns a list of all new models downloaded or updated
 
     """
@@ -227,15 +302,24 @@ if __name__ == "__main__":
     # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
     database = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
     
+    # Search for compund
+    print(database.search_for_compound("C"))
+    
+    # Search for compartment
+    print(database.search_for_compartment("cell"))
+
+    # Search for compound in compartment
+    print(database.search_compound_in_compartment(compound="C", compartment="cell"))
+
     # Compare two models using graph traversal algorithms
-    print(database.compare_models("BIOMD0000000001", "BIOMD0000000001"))
+    #print(database.compare_models("BIOMD0000000003", "BIOMD0000000004"))
 
     
     # test for up   dating models
-    # database.import_models(["BIOMD0000000001"])
+    #database.import_models(["BIOMD0000000001"])
 
     # Test to see if load_and_import, delete_model and check_model_exists()
     #database.load_and_import_model("BIOMD0000000001")
     #print(database.check_model_exist("BIOMD0000000001"))
-    #database.delete_model("BIOMD0000000001")
+    # database.delete_model("BIOMD0000000001")
     #print(database.check_model_exists("BIOMD0000000001"))

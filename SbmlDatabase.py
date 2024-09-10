@@ -133,8 +133,80 @@ class SbmlDatabase:
         query = f"""MATCH (n) WHERE n.tag="{model_id}" DETACH DELETE n"""
         self.connection.query(query, expect_data=False)
         
-        
+    
+    def compare_models(self, model_id1, model_id2):
+        """
+        Queries database - TODO: Write Docs
+            > ........
+            > ........
+        """
 
+        query = f"""// Define parameters for the two graphs to compare
+            WITH '{model_id1}' AS graph1_id, '{model_id2}' AS graph2_id  // Using the same ID for self-comparison
+
+            // Compare nodes
+            MATCH (n1:Model {{id: graph1_id}})
+            MATCH (n2:Model {{id: graph2_id}})
+
+            // Compare number of nodes and relationships
+            WITH n1, n2,
+                count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n1_elements,
+                count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n2_elements,
+                count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n1_relationships,
+                count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n2_relationships
+
+            // Calculate structural similarity
+            WITH n1, n2,
+                CASE WHEN n1_elements = n2_elements THEN 1.0 
+                    ELSE (1.0 - abs(n1_elements - n2_elements) / toFloat(n1_elements + n2_elements)) 
+                END AS node_similarity,
+                CASE WHEN n1_relationships = n2_relationships THEN 1.0 
+                    ELSE (1.0 - abs(n1_relationships - n2_relationships) / toFloat(n1_relationships + n2_relationships)) 
+                END AS relationship_similarity
+
+            // Compare properties of Model nodes
+            WITH n1, n2, node_similarity, relationship_similarity,
+                CASE WHEN n1.extentUnits = n2.extentUnits AND n1.timeUnits = n2.timeUnits THEN 1.0
+                    ELSE (CASE WHEN n1.extentUnits = n2.extentUnits THEN 0.5 ELSE 0 END +
+                            CASE WHEN n1.timeUnits = n2.timeUnits THEN 0.5 ELSE 0 END)
+                END AS property_similarity
+
+            // Compare child nodes (Compartments, Species, Reactions, etc.)
+            MATCH (n1)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child1)
+            MATCH (n2)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child2)
+            WHERE labels(child1) = labels(child2)
+
+            WITH n1, n2, node_similarity, relationship_similarity, property_similarity,
+                collect(child1) AS children1, collect(child2) AS children2
+
+            // Calculate child node similarity
+            WITH n1, n2, node_similarity, relationship_similarity, property_similarity,
+                children1, children2,
+                size(children1) AS total_children
+
+            UNWIND children2 AS c2
+            WITH n1, n2, node_similarity, relationship_similarity, property_similarity,
+                children1, total_children, collect(c2.id) AS children2_ids
+
+            WITH n1, n2, node_similarity, relationship_similarity, property_similarity,
+                total_children,
+                size([c1 IN children1 WHERE c1.id IN children2_ids]) AS matching_children
+
+            // Calculate final similarity score
+            WITH 
+                CASE WHEN n1.id = n2.id THEN 1.0  // Perfect score for self-comparison
+                ELSE (node_similarity + relationship_similarity + property_similarity + 
+                    CASE WHEN total_children > 0 THEN toFloat(matching_children) / total_children ELSE 1.0 END) / 4
+                END AS similarity_score
+
+            RETURN similarity_score"""
+
+        result = self.connection.query(query, expect_data=True) # this accuracy is not parsed
+        accuracy = result[0]['similarity_score']
+
+        return accuracy
+    
+    
 if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
@@ -148,11 +220,14 @@ if __name__ == "__main__":
     """
 
     # Creating Server with given schema, and neo4j configs [folder is where biomodels xml are stored and loaded]
+    # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
     database = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
     
-    # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
+    # Compare two models using graph traversal algorithms
+    print(database.compare_models("BIOMD0000000001", "BIOMD0000000003"))
+
     
-    # test for updating models
+    # test for up   dating models
     # database.import_models(["BIOMD0000000001"])
 
     # Test to see if load_and_import, delete_model and check_model_exists()

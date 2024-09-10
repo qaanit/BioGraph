@@ -142,64 +142,68 @@ class SbmlDatabase:
         """
 
         query = f"""// Define parameters for the two graphs to compare
-            WITH '{model_id1}' AS graph1_id, '{model_id2}' AS graph2_id  // Using the same ID for self-comparison
+        WITH '{model_id1}' AS graph1_id, '{model_id2}' AS graph2_id
 
-            // Compare nodes
-            MATCH (n1:Model {{id: graph1_id}})
-            MATCH (n2:Model {{id: graph2_id}})
+        // Define weights for different similarity aspects (adjust as needed)
+        WITH graph1_id, graph2_id,
+            0.5 AS w_structure,
+            0.5 AS w_children
 
-            // Compare number of nodes and relationships
-            WITH n1, n2,
-                count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n1_elements,
-                count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n2_elements,
-                count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n1_relationships,
-                count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n2_relationships
+        // Compare nodes
+        MATCH (n1:Model {{id: graph1_id}})
+        MATCH (n2:Model {{id: graph2_id}})
 
-            // Calculate structural similarity
-            WITH n1, n2,
-                CASE WHEN n1_elements = n2_elements THEN 1.0 
-                    ELSE (1.0 - abs(n1_elements - n2_elements) / toFloat(n1_elements + n2_elements)) 
-                END AS node_similarity,
-                CASE WHEN n1_relationships = n2_relationships THEN 1.0 
-                    ELSE (1.0 - abs(n1_relationships - n2_relationships) / toFloat(n1_relationships + n2_relationships)) 
-                END AS relationship_similarity
+        // Compare number of nodes and relationships
+        WITH n1, n2, w_structure, w_children,
+            count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n1_elements,
+            count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n2_elements,
+            count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n1_relationships,
+            count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n2_relationships
 
-            // Compare properties of Model nodes
-            WITH n1, n2, node_similarity, relationship_similarity,
-                CASE WHEN n1.extentUnits = n2.extentUnits AND n1.timeUnits = n2.timeUnits THEN 1.0
-                    ELSE (CASE WHEN n1.extentUnits = n2.extentUnits THEN 0.5 ELSE 0 END +
-                            CASE WHEN n1.timeUnits = n2.timeUnits THEN 0.5 ELSE 0 END)
-                END AS property_similarity
+        // Calculate structural similarity
+        WITH n1, n2, w_structure, w_children,
+            CASE WHEN n1_elements = n2_elements AND n1_relationships = n2_relationships THEN 1.0
+                ELSE (
+                    (1.0 - abs(n1_elements - n2_elements) / toFloat(n1_elements + n2_elements)) * 0.5 +
+                    (1.0 - abs(n1_relationships - n2_relationships) / toFloat(n1_relationships + n2_relationships)) * 0.5
+                )
+            END AS structural_similarity
 
-            // Compare child nodes (Compartments, Species, Reactions, etc.)
-            MATCH (n1)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child1)
-            MATCH (n2)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child2)
-            WHERE labels(child1) = labels(child2)
+        // Compare child nodes (Compartments, Species, Reactions, etc.)
+        MATCH (n1)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child1)
+        MATCH (n2)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child2)
+        WHERE labels(child1) = labels(child2)
 
-            WITH n1, n2, node_similarity, relationship_similarity, property_similarity,
-                collect(child1) AS children1, collect(child2) AS children2
+        WITH n1, n2, w_structure, w_children,
+            structural_similarity,
+            collect(child1) AS children1, collect(child2) AS children2
 
-            // Calculate child node similarity
-            WITH n1, n2, node_similarity, relationship_similarity, property_similarity,
-                children1, children2,
-                size(children1) AS total_children
+        // Calculate child node similarity
+        WITH n1, n2, w_structure, w_children,
+            structural_similarity,
+            children1, children2,
+            size(children1) AS total_children
 
-            UNWIND children2 AS c2
-            WITH n1, n2, node_similarity, relationship_similarity, property_similarity,
-                children1, total_children, collect(c2.id) AS children2_ids
+        UNWIND children2 AS c2
+        WITH n1, n2, w_structure, w_children,
+            structural_similarity,
+            children1, total_children, collect(c2.id) AS children2_ids
 
-            WITH n1, n2, node_similarity, relationship_similarity, property_similarity,
-                total_children,
-                size([c1 IN children1 WHERE c1.id IN children2_ids]) AS matching_children
+        WITH n1, n2, w_structure, w_children,
+            structural_similarity,
+            total_children,
+            CASE WHEN total_children > 0
+                THEN toFloat(size([c1 IN children1 WHERE c1.id IN children2_ids])) / total_children
+                ELSE 1.0
+            END AS children_similarity
+            
+        // Calculate final similarity score
+        WITH 
+            structural_similarity * w_structure +
+            children_similarity * w_children
+            AS similarity_score
 
-            // Calculate final similarity score
-            WITH 
-                CASE WHEN n1.id = n2.id THEN 1.0  // Perfect score for self-comparison
-                ELSE (node_similarity + relationship_similarity + property_similarity + 
-                    CASE WHEN total_children > 0 THEN toFloat(matching_children) / total_children ELSE 1.0 END) / 4
-                END AS similarity_score
-
-            RETURN similarity_score"""
+        RETURN similarity_score"""
 
         result = self.connection.query(query, expect_data=True) # this accuracy is not parsed
         accuracy = result[0]['similarity_score']
@@ -224,7 +228,7 @@ if __name__ == "__main__":
     database = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
     
     # Compare two models using graph traversal algorithms
-    print(database.compare_models("BIOMD0000000001", "BIOMD0000000003"))
+    print(database.compare_models("BIOMD0000000001", "BIOMD0000000001"))
 
     
     # test for up   dating models

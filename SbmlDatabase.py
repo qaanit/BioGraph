@@ -96,6 +96,48 @@ class SbmlDatabase:
         self.connection.create_relationships(relationships=rel)
 
 
+    def merge_biomodels(self, model_id1, model_id2) -> None:
+        """
+        Loads an 2 SBML models and merges them to one graph
+            - uses database connection to add model
+
+        model_id1 : int
+            Name/Number of the first model to be merged
+
+        model_id2 : int
+            Name/Number of the second model to be merged
+        """
+
+        tag = model_id1 + "-" + model_id2 # A merged models tag/name is both model tags combined
+
+        if self.check_model_exists(tag):
+            self.delete_model(tag)
+            print(f"Deleting old model {tag}")
+
+        # Specify location of two graphs
+        path_model1 = self.folder + "/" + model_id1 + ".xml"
+        path_model2 = self.folder + "/" + model_id2 + ".xml"
+
+        # Mapping sbml to model1
+        sbm = sbml.SbmlToNeo4j.from_sbml(path=path_model1, tag=tag)
+        nod = sbm.format_nodes(nodes=self.arr.nodes)
+        rel = sbm.format_relationships(relationships=self.arr.relationships)
+
+        # Import graph1 into Neo4j
+        self.connection.create_nodes(nodes=nod)
+        self.connection.create_relationships(relationships=rel)
+
+        # Mapping sbml to model2
+        sbm = sbml.SbmlToNeo4j.from_sbml(path=path_model2, tag=tag)   
+        nod = sbm.format_nodes(nodes=self.arr.nodes)
+        rel = sbm.format_relationships(relationships=self.arr.relationships)
+
+        # Import graph2 into Neo4j
+        self.connection.create_nodes(nodes=nod)
+        self.connection.create_relationships(relationships=rel)
+
+
+
     def import_models(self, model_list) -> None:
         """
         Imports multiple SBML models into Neo4j specified by a list containing model numbers
@@ -144,6 +186,7 @@ class SbmlDatabase:
     def compare_models(self, model_id1, model_id2) -> int:
         """
         This Graph mathcing algorithm compares the similarity between two biomodels in graph format and returns a similarity score. 
+        ONlY WORKS ON NON MERGED GRAPHS
         Works in a single query by taking into account, structure of the graph and node data as follows:
             1) Select weighting of structure vs child nodes
             2) Get/Match the two models being compared
@@ -170,8 +213,8 @@ class SbmlDatabase:
                 {CHILDREN_WEIGHTING} AS w_children
 
             // Compare nodes
-            MATCH (n1:Model {{id: graph1_id}})
-            MATCH (n2:Model {{id: graph2_id}})
+            MATCH (n1:Model {{tag: graph1_id}})
+            MATCH (n2:Model {{tag: graph2_id}})
 
             // Compare number of nodes and relationships
             WITH n1, n2, w_structure, w_children,
@@ -319,7 +362,7 @@ if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
     downloader = BiomodelsDownloader(threads=5, curatedOnly=True)
-    # models = downloader.verifiy_models() # will download all models
+    models = downloader.verifiy_models() # will download all models
     # returns a list of all new models downloaded or updated
 
     """
@@ -330,8 +373,13 @@ if __name__ == "__main__":
     # Creating Server with given schema, and neo4j configs [folder is where biomodels xml are stored and loaded]
     # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
     database = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
-    
+    database.import_models(model_list=models)
     # Search for compund
+    database.merge_biomodels("BIOMD0000000003", "BIOMD0000000004")
+    database.load_and_import_model("BIOMD0000000003")
+    database.load_and_import_model("BIOMD0000000004")
+    database.load_and_import_model("BIOMD0000000005")
+
     print(database.search_for_compound("C"))
     
     # Search for compartment
@@ -344,6 +392,7 @@ if __name__ == "__main__":
     print(database.compare_models("BIOMD0000000003", "BIOMD0000000004"))
 
     
+
     # test for up   dating models
     #database.import_models(["BIOMD0000000001"])
 

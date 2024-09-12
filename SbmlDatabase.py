@@ -54,7 +54,7 @@ class SbmlDatabase:
         self.arr = arrows.Arrows.from_json(path=modelisation_path)
         
 
-    def load_and_import_model(self, model_id):
+    def load_and_import_model(self, model_id) -> None:
         """
         Loads an SBML model by index, maps it, and imports it into Neo4j.
         
@@ -87,7 +87,7 @@ class SbmlDatabase:
         return
     
 
-    def import_models(self, model_list):
+    def import_models(self, model_list) -> None:
         """
         Imports multiple SBML models into Neo4j specified by a list containing model numbers
 
@@ -103,7 +103,7 @@ class SbmlDatabase:
 
         return
 
-    def check_model_exists(self, model_id):
+    def check_model_exists(self, model_id) -> bool:
 
         """
         Query the current database, to see if model exists
@@ -118,13 +118,14 @@ class SbmlDatabase:
         
         result = self.connection.query(query, expect_data=True)
         
+        # Empty results
         if not result:
             return False
-        else:
-            return True
+        
+        return True
 
     
-    def delete_model(self, model_id):
+    def delete_model(self, model_id) -> None:
         """
         Queries database to delete a model based on tag
             -- deletes all nodes and relationships belonging to a node is 
@@ -134,12 +135,24 @@ class SbmlDatabase:
         self.connection.query(query, expect_data=False)
         
     
-    def compare_models(self, model_id1, model_id2):
+    def compare_models(self, model_id1, model_id2) -> int:
         """
-        Queries database - TODO: Write Docs
-            > ........
-            > ........
+        This Graph mathcing algorithm compares the similarity between two biomodels in graph format and returns a similarity score. 
+        Works in a single query by taking into account, structure of the graph and node data as follows:
+            1) Select weighting of structure vs child nodes
+            2) Get/Match the two models being compared
+            3) Count the nodes and relationships of each model -> traversal handled by neo4j
+            4) Structural similarity is calculated by diffence in nodes and relationships independantly
+            5) Child node similarity is the combination of nodes and edges/relationships eg. A HAS_SPECIES B
+            6) This is compared by mathing lists of these relationships to each other
+            7) The final similarity score is the weighted sum of structure and child nodes similarity
+
+        Return:
+            int: Similarity score calculation of two models. Accuracy between 0 and 1
         """
+
+        STRUCTURE_WEIGHTING = 0.5
+        CHILDREN_WEIGHTING = 0.5
 
         query = f"""
             // Define parameters for the two graphs to compare
@@ -147,8 +160,8 @@ class SbmlDatabase:
 
             // Define weights for different similarity aspects (adjust as needed)
             WITH graph1_id, graph2_id,
-                0.5 AS w_structure,
-                0.5 AS w_children
+                {STRUCTURE_WEIGHTING} AS w_structure,
+                {CHILDREN_WEIGHTING} AS w_children
 
             // Compare nodes
             MATCH (n1:Model {{id: graph1_id}})
@@ -214,9 +227,12 @@ class SbmlDatabase:
         return accuracy
     
 
-    def search_for_compartment(self, compartment):
+    def search_for_compartment(self, compartment) -> list:
         """
-        DOCS:...
+        Queries Database to find all models that has constains a specific compartment.
+            
+        Return:
+            list: A list of all unique matching models
         """
 
         query = f"""
@@ -237,9 +253,13 @@ class SbmlDatabase:
 
         return list(matching_models)
 
-    def search_for_compound(self, compound):
+
+    def search_for_compound(self, compound) -> list:
         """
-        DOCS:...
+            Queries Database to find all models that has a contains a specific species/compound.
+            
+            Return:
+                list: A list of all unique matching models
         """
 
         query = f"""
@@ -261,9 +281,12 @@ class SbmlDatabase:
         return list(matching_models)
 
 
-    def search_compound_in_compartment(self, compound, compartment):
+    def search_compound_in_compartment(self, compound, compartment) -> list:
         """
-            DOCS:...
+        Queries Database to find all models that has contains a specific species in a specific compartment.
+            
+        Return:
+            list: A list of all unique matching models
         """
 
         query = f"""
@@ -312,14 +335,14 @@ if __name__ == "__main__":
     print(database.search_compound_in_compartment(compound="C", compartment="cell"))
 
     # Compare two models using graph traversal algorithms
-    #print(database.compare_models("BIOMD0000000003", "BIOMD0000000004"))
+    print(database.compare_models("BIOMD0000000003", "BIOMD0000000004"))
 
     
     # test for up   dating models
     #database.import_models(["BIOMD0000000001"])
 
     # Test to see if load_and_import, delete_model and check_model_exists()
-    #database.load_and_import_model("BIOMD0000000001")
+    # database.load_and_import_model("BIOMD0000000001")
     #print(database.check_model_exist("BIOMD0000000001"))
     # database.delete_model("BIOMD0000000001")
     #print(database.check_model_exists("BIOMD0000000001"))

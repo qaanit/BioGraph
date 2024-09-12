@@ -27,11 +27,22 @@ class SbmlDatabase:
         Imports multiple SBML models into Neo4j.
 
     check_model_exists(model_id):
-        check if database contains a model
+        Check if database contains a model.
 
     delete_model(model_id):
-        deltes model from databse
+        Deletes model from database.
 
+    compare_models(model_id1, model_id2):
+        Calculates similarity between two models.
+
+    search_for_compartment(compartment):        
+        Finds models that have a specific compartment.
+
+    search_for_compund(compound):
+        Finds models that contains a specific compund.
+    
+    search_compound_in_compartment(compound, compartment):
+        Finds models that contains specific species in a specific compartment.
     """
     
     def __init__(self, config_path, folder, modelisation_path):
@@ -66,7 +77,7 @@ class SbmlDatabase:
             Name/Number of the model to be imported
         """
 
-        # RESOLVE CONFLICTS -- Database needs to be queried -- remove old model and continue as usual
+        # RESOLVE CONFLICTS -- Database queried to remove old model and continue as usual
         if self.check_model_exists(model_id):
             self.delete_model(model_id)
             print(f"Deleting old model {model_id}")
@@ -84,24 +95,19 @@ class SbmlDatabase:
         self.connection.create_nodes(nodes=nod)
         self.connection.create_relationships(relationships=rel)
 
-        return
-    
 
     def import_models(self, model_list) -> None:
         """
         Imports multiple SBML models into Neo4j specified by a list containing model numbers
-
         """
 
         if not model_list:
             print("No new models added")
             return
 
-
         for model in model_list:
             self.load_and_import_model(model)
 
-        return
 
     def check_model_exists(self, model_id) -> bool:
 

@@ -43,6 +43,9 @@ class SbmlDatabase:
     
     search_compound_in_compartment(compound, compartment):
         Finds models that contains specific species in a specific compartment.
+
+    change_schema(modelisation_path):
+        Change schema that converts sbml to graphs
     """
     
     def __init__(self, config_path, folder, modelisation_path):
@@ -358,6 +361,11 @@ class SbmlDatabase:
         return list(matching_models)
 
 
+    def change_schema(self, modelisation_path):
+        """Change schema of database. All following added models will use this schema. Old ones do not change."""
+        self.arr = arrows.Arrows.from_json(path=modelisation_path)
+
+
 if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
@@ -372,7 +380,7 @@ if __name__ == "__main__":
 
     # Creating Server with given schema, and neo4j configs [folder is where biomodels xml are stored and loaded]
     # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
-    database = SbmlDatabase("localhost.ini", "biomodels", "L3V2.7-1.json")
+    database = SbmlDatabase("localhost.ini", "biomodels", "default_schema.json")
     database.import_models(model_list=models)
     # Search for compund
     database.merge_biomodels("BIOMD0000000003", "BIOMD0000000004")

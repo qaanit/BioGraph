@@ -87,7 +87,7 @@ class SbmlDatabase:
 
         # ADD NEW MODELS
         path_model = self.folder + "/" + model_id + ".xml"
-        tag = model_id # Inlcude model version 
+        tag = model_id 
         sbm = sbml.SbmlToNeo4j.from_sbml(path=path_model, tag=tag)
 
         # Mapping sbml to graph
@@ -363,6 +363,11 @@ class SbmlDatabase:
 
     def change_schema(self, modelisation_path):
         """Change schema of database. All following added models will use this schema. Old ones do not change."""
+
+        if modelisation_path[-5] != ".json":
+            print("Invalid input provided")
+            return 
+
         self.arr = arrows.Arrows.from_json(path=modelisation_path)
 
 

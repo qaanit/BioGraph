@@ -16,7 +16,7 @@ class TestSbmlDatabase(unittest.TestCase):
 
     @patch('SbmlDatabase.connect')
     def test_compare__same_model(self, mock_connect):
-        """ Test comparing same model """
+        """ Test comparing same model in graph macthing algorithm - should be 100% accuracy """
         mock_connect.return_value = MagicMock()
         mock_connect().run_query.return_value = 1
         similarity = self.database.compare_models("BIOMD0000000003", "BIOMD0000000003")

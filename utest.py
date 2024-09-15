@@ -13,6 +13,22 @@ class TestSbmlDatabase(unittest.TestCase):
         """ Set up a mock database instance before each test """
         self.database = SbmlDatabase("localhost.ini", "biomodels", "default_schema.json")
     
+    @patch('SbmlDatabase.connect')
+    def test_delete_model(self, mock_connect):
+        """ Test deleting a model from the database """
+        mock_connect.return_value = MagicMock()
+        self.database.delete_model("BIOMD0000000003")
+        mock_connect().run_query.assert_not_called()
+
+
+    @patch('SbmlDatabase.connect')
+    def test_compare_models(self, mock_connect):
+        """ Test comparing two models """
+        mock_connect.return_value = MagicMock()
+        mock_connect().run_query.return_value = 0.9583333333333333
+        similarity = self.database.compare_models("BIOMD0000000003", "BIOMD0000000004")
+        self.assertEqual(similarity, 0.9583333333333333)
+        # This accuracy value is objective, but makes sure that the graph matching algorithm remains the same
 
     @patch('SbmlDatabase.connect')
     def test_compare__same_model(self, mock_connect):
@@ -83,25 +99,6 @@ class TestSbmlDatabase(unittest.TestCase):
         self.assertTrue(exists)
         mock_connect().run_query.assert_not_called()
 
-
-    @patch('SbmlDatabase.connect')
-    def test_delete_model(self, mock_connect):
-        """ Test deleting a model from the database """
-        mock_connect.return_value = MagicMock()
-        self.database.delete_model("BIOMD0000000003")
-        mock_connect().run_query.assert_not_called()
-
-
-    @patch('SbmlDatabase.connect')
-    def test_compare_models(self, mock_connect):
-        """ Test comparing two models """
-        mock_connect.return_value = MagicMock()
-        mock_connect().run_query.return_value = 0.9583333333333333
-        similarity = self.database.compare_models("BIOMD0000000003", "BIOMD0000000004")
-        self.assertEqual(similarity, 0.9583333333333333)
-        # This accuracy value is objective, but makes sure that the graph matching algorithm remains the same
-
-    
 
 if __name__ == '__main__':
     unittest.main(argv=[''], exit=False)

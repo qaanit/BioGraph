@@ -139,8 +139,10 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
                     print(f"{model} version not up to date")
                 """  
         self.missing_damaged_models = self.missing_damaged_models[:MODEL_LIMIT]
-        print(f"[{len(self.missing_damaged_models)}/{len(self.curated_models)}] - models damaged or lost")
-
+        if MODEL_LIMIT == -1:
+            print(f"[{len(self.missing_damaged_models)}/{len(self.curated_models)}] - models damaged or lost")
+        else:
+            print(f"[{len(self.missing_damaged_models)}/{MODEL_LIMIT}] - model damaged or lost")
         # redownload missing models in parallel
         self.run()
 

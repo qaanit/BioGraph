@@ -1,25 +1,25 @@
+from mainGUI import *
+from SbmlDatabase import SbmlDatabase
+from BiomodelsDownloader import BiomodelsDownloader
 
-from biomodels_restful_api_client import services as bmservices
 
-#print(bmservices.get_model_info("BIOMD0000000900"))
-#bmservices.download("BIOMD0000000900","Bianca2013.xml")
-#print(bmservices.get_model_files_info("BIOMD0000000900", "xml")) BIOMD0000000920
+# These models are all downloaded from the biomodels database
+downloader = BiomodelsDownloader(threads=5, curatedOnly=True)
+models = downloader.verifiy_models() # will download all models
+# returns a list of all new models downloaded or updated
 
-enteredmodel = input("Enter model number: ")
-model = bmservices.get_model_info(enteredmodel)
+"""
+model.load_and_import_model() # manually add model by file name
+this is how the user can add their own models / pipeline
+"""
 
-name = model['name']
+# Creating Server with given schema, and neo4j configs [folder is where biomodels xml are stored and loaded]
+# This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
+database = SbmlDatabase("localhost.ini", "biomodels", "default_schema.json")
+database.import_models(model_list=models)
 
-mname = name.split()
 
-if mname[0] == name:
-    mname = name.split("_")
-
-filename = mname[0]
-
-try:
-    bmservices.download(enteredmodel,f"{filename}.xml")
-except:
-    bmservices.download(enteredmodel,f"{enteredmodel}_url.xml")
-
-print(name)
+app = QApplication(sys.argv)
+window = FileUploaderApp()
+window.show()
+sys.exit(app.exec())

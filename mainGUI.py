@@ -96,7 +96,7 @@ class FileUploaderApp(QMainWindow):
 
         # File list
         self.file_list = QListWidget()
-        self.file_list.itemClicked.connect(self.display_file_name)
+        self.file_list.itemClicked.connect(self.toggle_file_display)
         self.file_list.setStyleSheet("QListWidget{ background-color: #0c120c; border: none}")
         left_layout.addWidget(QLabel("Uploaded Files:"))
         left_layout.addWidget(self.file_list)
@@ -120,7 +120,7 @@ class FileUploaderApp(QMainWindow):
         search_widget = QWidget()
         search_layout = QHBoxLayout(search_widget)
         self.search_bar = QLineEdit()
-        self.search_bar.setWindowIcon(QIcon("search-interface-symbol.png"))
+        #self.search_bar.setWindowIcon(QIcon("search-interface-symbol.png"))
         self.search_bar.setPlaceholderText("Search...")
         self.search_bar.setStyleSheet("""
             QLineEdit { 
@@ -137,7 +137,7 @@ class FileUploaderApp(QMainWindow):
         
         search_button = QPushButton("Search")
         search_button.clicked.connect(self.perform_search)
-        search_button.clicked.connect(self.toggle_widgets)
+        #search_button.clicked.connect(self.toggle_widgets)
         search_button.setStyleSheet("""
             QPushButton {
                 background-color: #1a301a;
@@ -213,9 +213,84 @@ class FileUploaderApp(QMainWindow):
         input_layout.addWidget(input_box)
         dropdown_layout.addLayout(input_layout)
         
+        # hiding dropdown menu
         self.dropdown_menu.setMaximumHeight(0)
         self.dropdown_menu.setMinimumHeight(0)
+
+        # Initially hide the dropdown menu
+        self.dropdown_menu.setMaximumHeight(0)
+        self.dropdown_menu.setMinimumHeight(0)
+
+        # Create file display widget
+        self.file_display = QWidget()
+        self.file_display.setFixedHeight(70)
+        self.file_display_layout = QHBoxLayout(self.file_display)
+        self.file_name_label = QLabel()
+        #self.file_name_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.file_name_label.setStyleSheet("""
+            QLabel {
+                background-color: #111c11;
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 0px;
+                margin: 0px;
+                border-radius: 5px;
+                border: none 
+                                           
+            }
+        """)
+        self.file_display.setStyleSheet("""
+            QWidget {
+                background-color: #111c11;
+                border-radius: 5px;
+                margin: 0px;
+                border: 1px solid;
+                border-color: #1a301a;
+            }
+        """)
+        button = QPushButton("View graph in browser")
+            #button.setFont(QFont("Arial",20))
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #1a301a;
+                padding: 10px 10px;
+                color: white;
+                font-size: 10px;
+                border: none;
+            }
+                                
+            QPushButton:hover {
+            background-color: #213d20;
+            }
+                                """)
         
+        button2 = QPushButton("Find similar models")
+            #button.setFont(QFont("Arial",20))
+        button2.setStyleSheet("""
+            QPushButton {
+                background-color: #1a301a;
+                padding: 10px 10px;
+                color: white;
+                font-size: 10px;
+                border: none;
+            }
+                                
+            QPushButton:hover {
+            background-color: #213d20;
+            }
+                                """)
+        button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        button2.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        button2.clicked.connect(self.toggle_widgets)
+        
+        self.file_display_layout.addWidget(self.file_name_label)
+        self.file_display_layout.addWidget(button2)
+        self.file_display_layout.addWidget(button)
+
+        self.file_display.hide()
+
+
         # Create main content area
         self.content_area = QScrollArea()
         self.content_widget = QWidget()
@@ -264,6 +339,7 @@ class FileUploaderApp(QMainWindow):
         main_window_layout.addWidget(self.file_counter_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         right_layout.addWidget(self.dropdown_menu)
+        right_layout.addWidget(self.file_display)
         right_layout.addWidget(self.content_area)
         right_layout.setStretchFactor(search_widget, 0)
         right_layout.setStretchFactor(main_window, 100)
@@ -273,6 +349,7 @@ class FileUploaderApp(QMainWindow):
 
         self.dropdown_visible = False
         self.widgets_visible = False
+        self.current_file = None
 
         # Set up animation
         self.animation = QPropertyAnimation(self.dropdown_menu, b"maximumHeight")
@@ -404,107 +481,18 @@ class FileUploaderApp(QMainWindow):
             if child.widget():
                 child.widget().deleteLater()
 
-    def display_file_name(self, item):
+    def toggle_file_display(self, item):
         file_name = os.path.splitext(item.text())[0]  # Remove file extension
-        self.clear_widgets()
-        label = QLabel(file_name)
-        widget = QWidget()
-        widget.setFixedHeight(70)  # Set only the height to be fixed
-        widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        widget.setStyleSheet("""
-                QWidget {
-                    background-color: #111c11;
-                    border-radius: 5px;
-                    margin: 2px;
-                }
-            """)
-        #label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet("""
-            QLabel {
-                color: white;
-                
-            }
-        """)
-        layout = QHBoxLayout(widget)
-        layout.addWidget(label)
-        button = QPushButton("View graph in browser")
-            #button.setFont(QFont("Arial",20))
-        button.setStyleSheet("""
-            QPushButton {
-                background-color: #1a301a;
-                padding: 10px 10px;
-                color: white;
-                font-size: 10px;
-                border: none;
-            }
-                                
-            QPushButton:hover {
-            background-color: #213d20;
-            }
-                                """)
-        button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        layout.addWidget(button)
-        self.content_layout.addWidget(widget)
-'''
-class LoadingScreen(QWidget):
-    def __init__(self):
-        super().__init__()
-        #self.setWindowTitle('Loading')
-        #self.setFixedSize(300, 100)
-        #layout = QVBoxLayout()
-
-        self.setWindowIcon(QIcon('Untitled_design-removebg-preview.png'))
-        self.setWindowTitle("BioGraph")
-        #self.setGeometry(100, 100, 1200, 800)
-
-        screen = QApplication.primaryScreen()
-        screen_geometry = screen.geometry()
-
-        window_width = int(screen_geometry.width() * 0.75)
-        window_height = int(screen_geometry.height() * 0.75)
         
-        # Calculate position
-        x = (screen_geometry.width() - window_width) // 2
-        y = (screen_geometry.height() - window_height) // 2
-        
-        # Set window geometry
-        self.setGeometry(x, y, window_width, window_height)
-        
-        self.setStyleSheet("background-color: #0c120c; color: white;")
-
-        layout = QHBoxLayout()
-        left = QWidget()
-        left_layout = QHBoxLayout(left)
-        layout.addWidget(left)
-
-        centre = QWidget()
-        centre.setStyleSheet("background-color: blue")
-        centre_layout = QHBoxLayout(centre)
-        label = QLabel("hello world")
-        centre_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.progress = QProgressBar()
-        centre_layout.addWidget(self.progress)
-        layout.addWidget(centre)
-
-        right = QWidget()
-        layout.addWidget(right)
-
-        self.setLayout(layout)
-
-        self.progress_value = 0
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_progress)
-        self.timer.start(50)  # Update every 50ms
-
-    def update_progress(self):
-        self.progress_value += 1
-        self.progress.setValue(self.progress_value)
-        if self.progress_value >= 100:
-            self.timer.stop()
-            self.close()
-            self.home_screen = FileUploaderApp()
-            self.home_screen.show()
-'''
+        if self.current_file == file_name:
+            self.file_display.hide()
+            self.clear_widgets()
+            self.current_file = None
+        else:
+            self.file_name_label.setText(file_name)
+            self.file_display.show()
+            self.clear_widgets()
+            self.current_file = file_name
             
 if __name__ == "__main__":
     app = QApplication(sys.argv)

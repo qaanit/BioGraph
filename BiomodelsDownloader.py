@@ -99,7 +99,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
                 future.result()  # Re-raise any Unsuccesful Download that was caught during execution
     
 
-    def verifiy_models(self): 
+    def verifiy_models(self, MODEL_LIMIT=-1): 
         
         """
         Checks if models listed on biomodels API are downloaded, and up to date 
@@ -138,7 +138,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
                     self.missing_damaged_models.append(model)
                     print(f"{model} version not up to date")
                 """  
-
+        self.missing_damaged_models = self.missing_damaged_models[:MODEL_LIMIT]
         print(f"[{len(self.missing_damaged_models)}/{len(self.curated_models)}] - models damaged or lost")
 
         # redownload missing models in parallel

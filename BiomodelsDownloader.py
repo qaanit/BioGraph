@@ -115,7 +115,11 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
         path = self.output_dir
 
         # Check if models exists
+        counter = 0
         for model in self.curated_models:   # TODO: Add non-curated - may need to change some logic
+            
+            counter += 1
+            if counter >= MODEL_LIMIT:break
 
             model_file = f"{path}/{model}.xml"
             if not os.path.isfile(model_file):
@@ -138,7 +142,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
                     self.missing_damaged_models.append(model)
                     print(f"{model} version not up to date")
                 """  
-        self.missing_damaged_models = self.missing_damaged_models[:MODEL_LIMIT]
+        
         if MODEL_LIMIT == -1:
             print(f"[{len(self.missing_damaged_models)}/{len(self.curated_models)}] - models damaged or lost")
         else:

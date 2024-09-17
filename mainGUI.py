@@ -34,6 +34,7 @@ class FileUploaderApp(QMainWindow):
         self.downloader = BiomodelsDownloader(threads=5, curatedOnly=True)
         self.models = self.downloader.verifiy_models(10)
         self.database.import_models(self.models)
+        self.model_ID = ""
 
     def setup_ui(self):
         central_widget = QWidget()
@@ -63,10 +64,13 @@ class FileUploaderApp(QMainWindow):
         self.dropdown_button.clicked.connect(self.toggle_dropdown)
         top_bar_layout.addWidget(self.dropdown_button)
 
-        self.schema_button = QPushButton("Change schema")
-        self.schema_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
+        dropdown_label = QLabel("Schema:")
+        self.schema_dropdown = QComboBox()
+        self.schema_dropdown.addItems(["original","attributeFactor","3","4"])
+        self.schema_dropdown.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
         #self.dropdown_button.clicked.connect(self.toggle_dropdown)
-        top_bar_layout.addWidget(self.schema_button)
+        top_bar_layout.addWidget(dropdown_label)
+        top_bar_layout.addWidget(self.schema_dropdown)
 
         buttons = ["Files", "Users", "Settings"]
         for button_text in buttons:
@@ -239,6 +243,7 @@ class FileUploaderApp(QMainWindow):
         self.file_display.setFixedHeight(70)
         self.file_display_layout = QHBoxLayout(self.file_display)
         self.file_name_label = QLabel()
+        #self.model_ID = ""
         #self.file_name_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.file_name_label.setStyleSheet("""
             QLabel {
@@ -411,19 +416,24 @@ class FileUploaderApp(QMainWindow):
             self.clear_widgets()
         else:
             self.add_widgets()
+            
         self.widgets_visible = not self.widgets_visible
 
     def add_widgets(self):
-        for i in range(15):
+
+        similar_models = self.database.find_all_similar(self.model_ID, 5)
+        print(self.model_ID)
+
+        for pair in similar_models:
             widget = QWidget()
             widget.setFixedHeight(70)  # Set only the height to be fixed
             widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            label = QLabel(f"BIOMD000000{i+1}")
+            label = QLabel(pair[0])
             simLabel = QLabel("similarity match:")
             perWidget = QWidget()
-            perLabel = QLabel(f"{(100-i*10) + i}%")
-            
-            if ((100-i*10) >= 90):
+            perLabel = QLabel(f"{pair[1]}%")
+
+            if (pair[1] >= 90):
                 perWidget.setStyleSheet("""
                 QWidget {
                     background-color: #111c11;
@@ -434,7 +444,7 @@ class FileUploaderApp(QMainWindow):
                     padding: 0px 0px;
                     font-weight: bold;}
              """)
-            elif (70 <= (100-i*10) < 90):
+            elif (70 <= pair[1] < 90):
                 perWidget.setStyleSheet("""
                 QWidget {
                     background-color: #111c11;
@@ -445,7 +455,7 @@ class FileUploaderApp(QMainWindow):
                     font-weight: bold;}
              """)
                 
-            elif (50 <= (100-i*10) <= 70):
+            elif (50 <= pair[1] <= 70):
                 perWidget.setStyleSheet("""
                 QWidget {
                     background-color: #111c11;
@@ -475,6 +485,7 @@ class FileUploaderApp(QMainWindow):
                     padding: 5px;
                 }
             """)
+
             perLayout = QHBoxLayout(perWidget)
             perLayout.addWidget(perLabel)
             layout = QHBoxLayout(widget)
@@ -502,6 +513,7 @@ class FileUploaderApp(QMainWindow):
             layout.addWidget(button)
             self.content_layout.addWidget(widget)
 
+
     def clear_widgets(self):
         while self.content_layout.count():
             child = self.content_layout.takeAt(0)
@@ -521,6 +533,8 @@ class FileUploaderApp(QMainWindow):
             self.current_file = None
         else:
             self.file_name_label.setText(file_name)
+            #print(file_name)
+            self.model_ID = file_name
             self.file_display.show()
             self.clear_widgets()
             self.current_file = file_name

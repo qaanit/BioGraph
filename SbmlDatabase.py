@@ -385,6 +385,26 @@ class SbmlDatabase:
         # Remove merged models whose tag is the same 
         return sorted(list(set(all_models)))
 
+
+    def find_all_similar(self, model_id, MODEL_LIMIT=-1) -> tuple:
+        """DOCS"""
+        similar_models = []
+        all_models = self.find_all_models()
+
+        for model in all_models:
+            if "-" in model: continue
+
+            accuracy = self.compare_models(model_id, model)
+            similar_models.append((model, round(accuracy * 100, 2)))
+        
+        similar_models = sorted(similar_models, key=lambda x: x[1], reverse=True)
+
+        if MODEL_LIMIT != -1:
+            return similar_models[:MODEL_LIMIT]
+
+        return similar_models
+    
+
 if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
@@ -403,8 +423,10 @@ if __name__ == "__main__":
     database.import_models(model_list=models)
     
     # Find all models
-    print(database.find_all_models())
+    # print(database.find_all_models())
     
+    print(database.find_all_similar("BIOMD0000000001", 5))
+    exit()
     database.merge_biomodels("BIOMD0000000003", "BIOMD0000000004")
     database.load_and_import_model("BIOMD0000000003")
     database.load_and_import_model("BIOMD0000000004")

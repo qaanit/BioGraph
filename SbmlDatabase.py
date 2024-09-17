@@ -382,6 +382,8 @@ class SbmlDatabase:
 
 
     def find_all_models(self) -> list:
+        """Returns a list of all models present in the database"""
+
         query = f"""
                 MATCH (m:Model) Return (m.tag);
                 """

@@ -8,19 +8,18 @@ from BiomodelsDownloader import BiomodelsDownloader
 from visualize import GraphVisualizer
 
 class FileUploaderApp(QMainWindow):
+
     def __init__(self):
         super().__init__()
         self.setWindowIcon(QIcon('Untitled_design-removebg-preview.png'))
         self.setWindowTitle("BioGraph")
-        #self.setGeometry(100, 100, 1200, 800)
 
         screen = QApplication.primaryScreen()
         screen_geometry = screen.geometry()
 
+        # Create window and set co-ordinates
         window_width = int(screen_geometry.width() * 0.75)
         window_height = int(screen_geometry.height() * 0.75)
-        
-        # Calculate position
         x = (screen_geometry.width() - window_width) // 2
         y = (screen_geometry.height() - window_height) // 2
         
@@ -30,55 +29,62 @@ class FileUploaderApp(QMainWindow):
         self.file_count = 0
         self.setup_ui()
 
-        #setup database
+        # Setup database
         self.database = SbmlDatabase("localhost.ini", "biomodels", "Schemas/default_schema.json")
         self.downloader = BiomodelsDownloader(threads=5, curatedOnly=True)
         self.models = self.downloader.verifiy_models(10)
         self.database.import_models(self.models)
-        self.model_ID = ""
+        self.model_ID = "" 
+
 
     def setup_ui(self):
+
+        # Central Widget
         central_widget = QWidget()
         central_widget.setStyleSheet("background-color: #0c120c; color: white;")
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
 
-        # Top bar with title
-        top_bar = QWidget()
-        
-        top_bar_layout = QHBoxLayout(top_bar)
+        # Overall Application Component setup
         app_name_label = QLabel("BioGraph")
         app_name_label.setStyleSheet("padding: 0px; font-size: 24px; font-weight: bold")
         app_icon_label = QLabel()
         app_icon_pixmap = QPixmap("Untitled_design-removebg-preview (2).png")
         app_icon_label.setPixmap(app_icon_pixmap.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio))
+        
+        # Top Bar Widget -> contains other widgets
+        top_bar = QWidget()
+        top_bar_layout = QHBoxLayout(top_bar)
         top_bar_layout.addWidget(app_icon_label)
-
         top_bar_layout.addWidget(app_name_label)
         top_bar_layout.setContentsMargins(0,0,0,0)
         top_bar_layout.setStretchFactor(app_icon_label, 0)
         top_bar_layout.setStretchFactor(app_name_label, 30)
         top_bar.setStyleSheet("background-color: #0c120c; color: white; border: 0px solid black; border-radius: 1px")
         
+        # Advanced Search Button
         self.dropdown_button = QPushButton("Advanced search")
         self.dropdown_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
         self.dropdown_button.clicked.connect(self.toggle_dropdown)
         top_bar_layout.addWidget(self.dropdown_button)
 
+        # Schema Button
         dropdown_label = QLabel("Schema:")
         self.schema_dropdown = QComboBox()
         self.schema_dropdown.addItems(["default_schema","attributeFactor","Simple","conversionFactor"])
         self.schema_dropdown.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
-        #self.dropdown_button.clicked.connect(self.toggle_dropdown)
         self.schema_dropdown.currentTextChanged.connect(self.changeSchema)
         top_bar_layout.addWidget(dropdown_label)
         top_bar_layout.addWidget(self.schema_dropdown)
 
+
+        # Merge Button 
         self.merge_button = QPushButton("Merge")
         self.merge_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
         self.merge_button.clicked.connect(self.merge_dropdown)
         top_bar_layout.addWidget(self.merge_button)
 
+        # Extra buttons -- no functionality
         buttons = ["Files", "Users", "Settings"]
         for button_text in buttons:
             button = QPushButton(button_text)
@@ -125,7 +131,7 @@ class FileUploaderApp(QMainWindow):
         left_layout.addWidget(QLabel("Uploaded Files:"))
         left_layout.addWidget(self.file_list)
 
-        # Add other buttons to left sidebar
+        # Add other buttons to left sidebar -- no functionality
         '''
         buttons = ["Dashboard", "Analytics", "Files", "Users", "Settings"]
         for button_text in buttons:
@@ -144,7 +150,7 @@ class FileUploaderApp(QMainWindow):
         search_widget = QWidget()
         search_layout = QHBoxLayout(search_widget)
         self.search_bar = QLineEdit()
-        #self.search_bar.setWindowIcon(QIcon("search-interface-symbol.png"))
+        # self.search_bar.setWindowIcon(QIcon("search-interface-symbol.png"))
         self.search_bar.setPlaceholderText("Search using a biomodel ID...")
         self.search_bar.setStyleSheet("""
             QLineEdit { 
@@ -157,11 +163,10 @@ class FileUploaderApp(QMainWindow):
             QLineEdit:hover{
                 background-color: #132413}
                 """)
-        search_layout.addWidget(self.search_bar)
         
+        search_layout.addWidget(self.search_bar)
         search_button = QPushButton("Search")
         search_button.clicked.connect(self.perform_search)
-        #search_button.clicked.connect(self.toggle_widgets)
         search_button.setStyleSheet("""
             QPushButton {
                 background-color: #1a301a;
@@ -175,6 +180,7 @@ class FileUploaderApp(QMainWindow):
                 background-color: #213d20;
             }
         """)
+
         search_layout.addWidget(search_button)
         search_layout.setContentsMargins(0,0,0,6)
         right_layout.addWidget(search_widget)
@@ -184,7 +190,7 @@ class FileUploaderApp(QMainWindow):
         dropdown_layout = QHBoxLayout(self.dropdown_menu)
         
         input_layout = QVBoxLayout()
-        label = QLabel("Compound")
+        label = QLabel("Compound/Species")
         self.compound_input_box = QLineEdit()
         self.compound_input_box.setStyleSheet("""
         QLineEdit { 
@@ -250,7 +256,6 @@ class FileUploaderApp(QMainWindow):
         # Create merge menu
         self.merge_menu = QWidget()
         merge_layout = QHBoxLayout(self.merge_menu)
-        
         merge_input_layout = QVBoxLayout()
         Mlabel = QLabel("Model 1")
         self.m1_input_box = QLineEdit()
@@ -265,6 +270,7 @@ class FileUploaderApp(QMainWindow):
         QLineEdit:hover{
             background-color: #132413}
             """)
+        
         merge_input_layout.addWidget(Mlabel)
         merge_input_layout.addWidget(self.m1_input_box)
         merge_layout.addLayout(merge_input_layout)
@@ -283,6 +289,7 @@ class FileUploaderApp(QMainWindow):
         QLineEdit:hover{
             background-color: #132413}
             """)
+        
         merge_input_layout.addWidget(Mlabel)
         merge_input_layout.addWidget(self.m2_input_box)
         merge_layout.addLayout(merge_input_layout)
@@ -290,7 +297,7 @@ class FileUploaderApp(QMainWindow):
         merge_input_layout = QVBoxLayout()
         merge_button = QPushButton("Merge models")
         merge_button.clicked.connect(self.merge_models)
-        #search_button.clicked.connect(self.toggle_widgets)
+        
         merge_button.setStyleSheet("""
             QPushButton {
                 background-color: #1a301a;
@@ -304,24 +311,24 @@ class FileUploaderApp(QMainWindow):
                 background-color: #213d20;
             }
         """)
+
+        # Add merge button to layout
         merge_input_layout.addWidget(merge_button)
         merge_layout.addLayout(merge_input_layout)
         
-        # hiding dropdown menu
+        # Hide merge dropdown menu
         self.merge_menu.setMaximumHeight(0)
         self.merge_menu.setMinimumHeight(0)
 
-        # Initially hide the dropdown menu
+        # Initially hide the merge menu
         self.merge_menu.setMaximumHeight(0)
         self.merge_menu.setMinimumHeight(0)
 
-        # Create file display widget
+        # Create file display widget for merge menu - result
         self.file_display = QWidget()
         self.file_display.setFixedHeight(70)
         self.file_display_layout = QHBoxLayout(self.file_display)
         self.file_name_label = QLabel()
-        #self.model_ID = ""
-        #self.file_name_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.file_name_label.setStyleSheet("""
             QLabel {
                 background-color: #111c11;
@@ -439,6 +446,7 @@ class FileUploaderApp(QMainWindow):
         self.file_counter_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_window_layout.addWidget(self.file_counter_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        # Add widgets to right layout
         right_layout.addWidget(self.dropdown_menu)
         right_layout.addWidget(self.merge_menu)
         right_layout.addWidget(self.file_display)
@@ -449,6 +457,7 @@ class FileUploaderApp(QMainWindow):
         right_layout.setContentsMargins(0,0,0,0)
         content_layout.addWidget(right_content)
 
+        # Set initial visibility to False
         self.dropdown_visible = False
         self.merge_visible = False
         self.widgets_visible = False
@@ -466,50 +475,63 @@ class FileUploaderApp(QMainWindow):
         self.merge_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
 
     def changeSchema(self, text):
+        """Change database Schema"""
         self.database.change_schema("Schemas/" + text + ".json")
 
     def upload_files(self):
+        """Add file to database"""
 
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files to Upload")
+
         for file_path in files:
-            file_name = file_path.split("/")[-1]
-            self.database.load_and_import_model(file_name[:-4])
+            file_name = file_path.split("/")[-1] # Strip folder 
+            self.database.load_and_import_model(file_name[:-4]) # Strip file extension
             self.file_list.addItem(file_name)
             self.file_count += 1
-        #self.file_counter_label.setText(f"Files Uploaded: {self.file_count}")
+        
 
     def advanced_search(self):
+        """Depending on input provided, query model and return matches"""
 
         self.clear_widgets()
-        cmp = self.compound_input_box.text()
-        cpt = self.compartment_input_box.text()
+        compound = self.compound_input_box.text()
+        compartment = self.compartment_input_box.text()
 
-        if cmp == "" and cpt == "":
+        # No input
+        if compound == "" and compartment == "":
             return
 
-        if cpt == "":
-            models = self.database.search_for_compound(cmp)
-        elif cmp == "":
-            models = self.database.search_for_compartment(cpt)
+        # Only search for compund
+        if compartment == "":
+            models = self.database.search_for_compound(compound)
+
+        # Only search for compartment
+        elif compound == "":
+            models = self.database.search_for_compartment(compartment)
+
+        # Search for compund in compartment
         else:
-            models = self.database.search_compound_in_compartment(compound=cmp, compartment=cpt)
+            models = self.database.search_compound_in_compartment(compound=compound, compartment=compartment)
         
         if models is None:
             models = ["NO MATCHING MODELS"]
         
-        self.toggle_adv_search(models)
-        
+        # Display result
+        self.toggle_advanced_search(models) 
 
 
-    def toggle_adv_search(self, models):
+    def toggle_advanced_search(self, models):
+        """Displat a list of models in a dropdown menu"""
+
         if self.adv_widgets_visible:
             self.clear_widgets()
         else:
-            self.adv_add_widgets(models)
+            self.advanced_search_add_widgets(models)
             
         self.adv_widgets_visible = not self.adv_widgets_visible
 
-    def adv_add_widgets(self, models):
+
+    def advanced_search_add_widgets(self, models):
         for model in models:
             widget = QWidget()
             widget.setFixedHeight(70)  # Set only the height to be fixed
@@ -553,6 +575,8 @@ class FileUploaderApp(QMainWindow):
 
 
     def perform_search(self):
+        """Lookup if a model exists in a database"""
+
         search_term = self.search_bar.text()
         print(f"Searching for: {search_term}")
         self.clear_widgets()
@@ -565,7 +589,10 @@ class FileUploaderApp(QMainWindow):
         else:
             self.show_search("Model does not exist")
 
+
     def merge_dropdown(self):
+        """Dropdown menu for merge button"""
+        # Animation and Visibility options 
         if self.merge_visible:
             self.merge_animation.setStartValue(self.merge_menu.height())
             self.merge_animation.setEndValue(0)
@@ -576,7 +603,10 @@ class FileUploaderApp(QMainWindow):
         self.merge_animation.start()
         self.merge_visible = not self.merge_visible
 
+
     def merge_models(self):
+        """Query database to merge two models"""
+
         model1 = self.m1_input_box.text()
         model2 = self.m2_input_box.text()
 
@@ -584,7 +614,10 @@ class FileUploaderApp(QMainWindow):
         print(newmodel)
         self.merge_widget(newmodel)
 
+
     def merge_widget(self, model):
+        """Setup merge button and its dropdown menu"""
+
         widget = QWidget()
         widget.setFixedHeight(70)  # Set only the height to be fixed
         widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -619,13 +652,15 @@ class FileUploaderApp(QMainWindow):
             }
                                 """)
         button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        #button.clicked.connect(lambda: self.veiwGraph(pair[0]))
         button.clicked.connect(lambda checked, x = model:self.veiwGraph(x))
 
         layout.addWidget(button)
         self.content_layout.addWidget(widget)
 
+
     def toggle_dropdown(self):
+        """Switch a dropdown menu on or off and animate it"""
+
         if self.dropdown_visible:
             self.animation.setStartValue(self.dropdown_menu.height())
             self.animation.setEndValue(0)
@@ -637,6 +672,8 @@ class FileUploaderApp(QMainWindow):
         self.dropdown_visible = not self.dropdown_visible
 
     def toggle_widgets(self):
+        """Set widget visible or invisible"""
+
         if self.widgets_visible:
             self.clear_widgets()
         else:
@@ -646,7 +683,7 @@ class FileUploaderApp(QMainWindow):
 
 
     def add_widgets(self):
-
+        """Create a widget, if a model needs to listed"""
         similar_models = self.database.find_all_similar(self.model_ID, 5)
 
         for pair in similar_models:
@@ -741,17 +778,24 @@ class FileUploaderApp(QMainWindow):
             layout.addWidget(button)
             self.content_layout.addWidget(widget)
 
+
     def clear_widgets(self):
+        """Set visibility of all widgets to None"""
         while self.content_layout.count():
             child = self.content_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
 
+
     def show_search(self, file_name):
+        """Show search results for a file in the database"""
         self.file_name_label.setText(file_name)
         self.file_display.show()
 
+
     def toggle_file_display(self, item):
+        """Turn File display on or off"""
+
         file_name = os.path.splitext(item.text())[0]  # Remove file extension
         
         if self.current_file == file_name:
@@ -766,6 +810,7 @@ class FileUploaderApp(QMainWindow):
             self.current_file = file_name
 
     def veiwGraph(self, text):
+        """Launch a matplotlib plot visualizing a graph"""
         visualiser = GraphVisualizer()
         visualiser.visualize(text)
 

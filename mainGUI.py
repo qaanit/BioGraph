@@ -76,7 +76,7 @@ class FileUploaderApp(QMainWindow):
 
         self.merge_button = QPushButton("Merge")
         self.merge_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
-        self.merge_button.clicked.connect(self.toggle_dropdown)
+        self.merge_button.clicked.connect(self.merge_dropdown)
         top_bar_layout.addWidget(self.merge_button)
 
         buttons = ["Files", "Users", "Settings"]
@@ -247,6 +247,74 @@ class FileUploaderApp(QMainWindow):
         self.dropdown_menu.setMaximumHeight(0)
         self.dropdown_menu.setMinimumHeight(0)
 
+        # Create merge menu
+        self.merge_menu = QWidget()
+        merge_layout = QHBoxLayout(self.merge_menu)
+        
+        merge_input_layout = QVBoxLayout()
+        Mlabel = QLabel("Model 1")
+        self.m1_input_box = QLineEdit()
+        self.m1_input_box.setStyleSheet("""
+        QLineEdit { 
+            padding: 5px 5px; 
+            font-size: 10px; 
+            border-radius: 5px; 
+            background-color: #111c11; 
+            color: white}
+        
+        QLineEdit:hover{
+            background-color: #132413}
+            """)
+        merge_input_layout.addWidget(Mlabel)
+        merge_input_layout.addWidget(self.m1_input_box)
+        merge_layout.addLayout(merge_input_layout)
+        
+        merge_input_layout = QVBoxLayout()
+        Mlabel = QLabel("Model 2")
+        self.m2_input_box = QLineEdit()
+        self.m2_input_box.setStyleSheet("""
+        QLineEdit { 
+            padding: 5px 5px; 
+            font-size: 10px; 
+            border-radius: 5px; 
+            background-color: #111c11; 
+            color: white}
+        
+        QLineEdit:hover{
+            background-color: #132413}
+            """)
+        merge_input_layout.addWidget(Mlabel)
+        merge_input_layout.addWidget(self.m2_input_box)
+        merge_layout.addLayout(merge_input_layout)
+        
+        merge_input_layout = QVBoxLayout()
+        merge_button = QPushButton("Merge models")
+        merge_button.clicked.connect(self.merge_models)
+        #search_button.clicked.connect(self.toggle_widgets)
+        merge_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1a301a;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-size: 16px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #213d20;
+            }
+        """)
+        merge_input_layout.addWidget(merge_button)
+        merge_layout.addLayout(merge_input_layout)
+        
+        # hiding dropdown menu
+        self.merge_menu.setMaximumHeight(0)
+        self.merge_menu.setMinimumHeight(0)
+
+        # Initially hide the dropdown menu
+        self.merge_menu.setMaximumHeight(0)
+        self.merge_menu.setMinimumHeight(0)
+
         # Create file display widget
         self.file_display = QWidget()
         self.file_display.setFixedHeight(70)
@@ -372,6 +440,7 @@ class FileUploaderApp(QMainWindow):
         main_window_layout.addWidget(self.file_counter_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         right_layout.addWidget(self.dropdown_menu)
+        right_layout.addWidget(self.merge_menu)
         right_layout.addWidget(self.file_display)
         right_layout.addWidget(self.content_area)
         right_layout.setStretchFactor(search_widget, 0)
@@ -381,6 +450,7 @@ class FileUploaderApp(QMainWindow):
         content_layout.addWidget(right_content)
 
         self.dropdown_visible = False
+        self.merge_visible = False
         self.widgets_visible = False
         self.adv_widgets_visible = False
         self.current_file = None
@@ -389,7 +459,12 @@ class FileUploaderApp(QMainWindow):
         self.animation = QPropertyAnimation(self.dropdown_menu, b"maximumHeight")
         self.animation.setDuration(300)
         self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
-    
+        
+        # Set up merge animation
+        self.merge_animation = QPropertyAnimation(self.merge_menu, b"maximumHeight")
+        self.merge_animation.setDuration(300)
+        self.merge_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+
     def changeSchema(self, text):
         self.database.change_schema("Schemas/" + text + ".json")
 
@@ -490,6 +565,65 @@ class FileUploaderApp(QMainWindow):
         else:
             self.show_search("Model does not exist")
 
+    def merge_dropdown(self):
+        if self.merge_visible:
+            self.merge_animation.setStartValue(self.merge_menu.height())
+            self.merge_animation.setEndValue(0)
+        else:
+            self.merge_animation.setStartValue(0)
+            self.merge_animation.setEndValue(100)
+        
+        self.merge_animation.start()
+        self.merge_visible = not self.merge_visible
+
+    def merge_models(self):
+        model1 = self.m1_input_box.text()
+        model2 = self.m2_input_box.text()
+
+        newmodel = self.database.merge_biomodels(model_id1=model1, model_id2=model2)
+        print(newmodel)
+        self.merge_widget(newmodel)
+
+    def merge_widget(self, model):
+        widget = QWidget()
+        widget.setFixedHeight(70)  # Set only the height to be fixed
+        widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        label = QLabel(model)
+        
+        widget.setStyleSheet("""
+            QWidget {
+                background-color: #111c11;
+                border-radius: 5px;
+                margin: 2px;
+                padding: 5px;
+            }
+        """)
+
+        layout = QHBoxLayout(widget)
+        layout.addWidget(label)
+        layout.addWidget(QWidget())  # Spacer
+        layout.addWidget(QWidget())  # Spacer
+        button = QPushButton("View graph in browser")
+        #button.setFont(QFont("Arial",20))
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #1a301a;
+                padding: 10px 10px;
+                color: white;
+                font-size: 10px;
+                border: none;
+            }
+                                
+            QPushButton:hover {
+            background-color: #213d20;
+            }
+                                """)
+        button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        #button.clicked.connect(lambda: self.veiwGraph(pair[0]))
+        button.clicked.connect(lambda checked, x = model:self.veiwGraph(x))
+
+        layout.addWidget(button)
+        self.content_layout.addWidget(widget)
 
     def toggle_dropdown(self):
         if self.dropdown_visible:

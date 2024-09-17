@@ -141,7 +141,7 @@ class SbmlDatabase:
         self.connection.create_nodes(nodes=nod)
         self.connection.create_relationships(relationships=rel)
 
-
+        return tag
 
     def import_models(self, model_list) -> None:
         """

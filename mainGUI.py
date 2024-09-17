@@ -5,6 +5,7 @@ from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from SbmlDatabase import SbmlDatabase
 from BiomodelsDownloader import BiomodelsDownloader
+from visualize import GraphVisualizer
 
 class FileUploaderApp(QMainWindow):
     def __init__(self):
@@ -30,7 +31,7 @@ class FileUploaderApp(QMainWindow):
         self.setup_ui()
 
         #setup database
-        self.database = SbmlDatabase("localhost.ini", "biomodels", "default_schema.json")
+        self.database = SbmlDatabase("localhost.ini", "biomodels", "Schemas/default_schema.json")
         self.downloader = BiomodelsDownloader(threads=5, curatedOnly=True)
         self.models = self.downloader.verifiy_models(10)
         self.database.import_models(self.models)
@@ -64,10 +65,14 @@ class FileUploaderApp(QMainWindow):
         self.dropdown_button.clicked.connect(self.toggle_dropdown)
         top_bar_layout.addWidget(self.dropdown_button)
 
-        self.schema_button = QPushButton("Change schema")
-        self.schema_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
+        dropdown_label = QLabel("Schema:")
+        self.schema_dropdown = QComboBox()
+        self.schema_dropdown.addItems(["default_schema","attributeFactor","Simple","conversionFactor"])
+        self.schema_dropdown.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
         #self.dropdown_button.clicked.connect(self.toggle_dropdown)
-        top_bar_layout.addWidget(self.schema_button)
+        self.schema_dropdown.currentTextChanged.connect(self.changeSchema)
+        top_bar_layout.addWidget(dropdown_label)
+        top_bar_layout.addWidget(self.schema_dropdown)
 
         buttons = ["Files", "Users", "Settings"]
         for button_text in buttons:
@@ -296,6 +301,8 @@ class FileUploaderApp(QMainWindow):
             }
                                 """)
         button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        #button.clicked.connect(self.set_id())
+        button.clicked.connect(lambda: self.veiwGraph(self.model_ID))
         button2.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         button2.clicked.connect(self.toggle_widgets)
         
@@ -374,6 +381,9 @@ class FileUploaderApp(QMainWindow):
         self.animation = QPropertyAnimation(self.dropdown_menu, b"maximumHeight")
         self.animation.setDuration(300)
         self.animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+    
+    def changeSchema(self, text):
+        self.database.change_schema("Schemas/" + text + ".json")
 
     def upload_files(self):
 
@@ -422,6 +432,7 @@ class FileUploaderApp(QMainWindow):
         print(self.model_ID)
 
         for pair in similar_models:
+            print(pair[0])
             widget = QWidget()
             widget.setFixedHeight(70)  # Set only the height to be fixed
             widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -507,9 +518,14 @@ class FileUploaderApp(QMainWindow):
                 }
                                  """)
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            #button.clicked.connect(lambda: self.veiwGraph(pair[0]))
+            button.clicked.connect(lambda: self.printtest(pair[0]))
+
             layout.addWidget(button)
             self.content_layout.addWidget(widget)
 
+    def printtest(self, string):
+        print(string)
 
     def clear_widgets(self):
         while self.content_layout.count():
@@ -535,7 +551,11 @@ class FileUploaderApp(QMainWindow):
             self.file_display.show()
             self.clear_widgets()
             self.current_file = file_name
-            
+
+    def veiwGraph(self, text):
+        visualiser = GraphVisualizer()
+        visualiser.visualize(text)
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = FileUploaderApp()

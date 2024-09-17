@@ -112,6 +112,8 @@ class SbmlDatabase:
         model_id2 : int
             Name/Number of the second model to be merged
         """
+        if not(self.check_model_exists(model_id=model_id1) and self.check_model_exists(model_id=model_id2)):
+            return "MODEL\S IN MERGE NOT FOUND"
 
         tag = model_id1 + "-" + model_id2 # A merged models tag/name is both model tags combined
 

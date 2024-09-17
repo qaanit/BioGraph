@@ -119,7 +119,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
         for model in self.curated_models:   # TODO: Add non-curated - may need to change some logic
             
             counter += 1
-            if counter >= MODEL_LIMIT:break
+            if (MODEL_LIMIT != -1) and (counter >= MODEL_LIMIT):break
 
             model_file = f"{path}/{model}.xml"
             if not os.path.isfile(model_file):

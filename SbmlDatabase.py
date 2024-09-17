@@ -1,5 +1,7 @@
 from neo4jsbml import arrows, connect, sbml
 from BiomodelsDownloader import BiomodelsDownloader
+import os
+
 
 class SbmlDatabase:
     """
@@ -274,6 +276,7 @@ class SbmlDatabase:
             """
 
         result = self.connection.query(query, expect_data=True) # this accuracy is not parsed
+        if result == []: return 0
         accuracy = result[0]['similarity_score']
 
         return accuracy
@@ -364,10 +367,15 @@ class SbmlDatabase:
     def change_schema(self, modelisation_path):
         """Change schema of database. All following added models will use this schema. Old ones do not change."""
 
-        if modelisation_path[-5] != ".json":
+        if modelisation_path[-5:] != ".json":
             print("Invalid input provided")
             return 
 
+        if not os.path.isfile(modelisation_path):
+            print("Schema not found")
+            return
+
+        print("Schema changed to", modelisation_path)
         self.arr = arrows.Arrows.from_json(path=modelisation_path)
 
 
@@ -388,6 +396,7 @@ class SbmlDatabase:
 
     def find_all_similar(self, model_id, MODEL_LIMIT=-1) -> tuple:
         """DOCS"""
+
         similar_models = []
         all_models = self.find_all_models()
 
@@ -419,7 +428,7 @@ if __name__ == "__main__":
 
     # Creating Server with given schema, and neo4j configs [folder is where biomodels xml are stored and loaded]
     # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
-    database = SbmlDatabase("localhost.ini", "biomodels", "default_schema.json")
+    database = SbmlDatabase("localhost.ini", "biomodels", "Schemas/default_schema.json")
     database.import_models(model_list=models)
     
     # Find all models

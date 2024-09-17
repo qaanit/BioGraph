@@ -74,6 +74,11 @@ class FileUploaderApp(QMainWindow):
         top_bar_layout.addWidget(dropdown_label)
         top_bar_layout.addWidget(self.schema_dropdown)
 
+        self.merge_button = QPushButton("Merge")
+        self.merge_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
+        self.merge_button.clicked.connect(self.toggle_dropdown)
+        top_bar_layout.addWidget(self.merge_button)
+
         buttons = ["Files", "Users", "Settings"]
         for button_text in buttons:
             button = QPushButton(button_text)
@@ -180,8 +185,8 @@ class FileUploaderApp(QMainWindow):
         
         input_layout = QVBoxLayout()
         label = QLabel("Compound")
-        input_box = QLineEdit()
-        input_box.setStyleSheet("""
+        self.compound_input_box = QLineEdit()
+        self.compound_input_box.setStyleSheet("""
         QLineEdit { 
             padding: 5px 5px; 
             font-size: 10px; 
@@ -193,13 +198,13 @@ class FileUploaderApp(QMainWindow):
             background-color: #132413}
             """)
         input_layout.addWidget(label)
-        input_layout.addWidget(input_box)
+        input_layout.addWidget(self.compound_input_box)
         dropdown_layout.addLayout(input_layout)
         
         input_layout = QVBoxLayout()
         label = QLabel("Compartment")
-        input_box = QLineEdit()
-        input_box.setStyleSheet("""
+        self.compartment_input_box = QLineEdit()
+        self.compartment_input_box.setStyleSheet("""
         QLineEdit { 
             padding: 5px 5px; 
             font-size: 10px; 
@@ -211,25 +216,27 @@ class FileUploaderApp(QMainWindow):
             background-color: #132413}
             """)
         input_layout.addWidget(label)
-        input_layout.addWidget(input_box)
+        input_layout.addWidget(self.compartment_input_box)
         dropdown_layout.addLayout(input_layout)
         
         input_layout = QVBoxLayout()
-        label = QLabel("Property")
-        input_box = QLineEdit()
-        input_box.setStyleSheet("""
-        QLineEdit { 
-            padding: 5px 5px; 
-            font-size: 10px; 
-            border-radius: 5px; 
-            background-color: #111c11; 
-            color: white}
-        
-        QLineEdit:hover{
-            background-color: #132413}
-            """)
-        input_layout.addWidget(label)
-        input_layout.addWidget(input_box)
+        search_button = QPushButton("Advanced Search")
+        search_button.clicked.connect(self.advanced_search)
+        #search_button.clicked.connect(self.toggle_widgets)
+        search_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1a301a;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                font-size: 16px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #213d20;
+            }
+        """)
+        input_layout.addWidget(search_button)
         dropdown_layout.addLayout(input_layout)
         
         # hiding dropdown menu
@@ -305,7 +312,7 @@ class FileUploaderApp(QMainWindow):
         button.clicked.connect(lambda: self.veiwGraph(self.model_ID))
         button2.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         button2.clicked.connect(self.toggle_widgets)
-        
+       
         if self.file_name_label == "Model does not exist":
             self.file_display_layout.addWidget(self.file_name_label)
             self.file_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -375,6 +382,7 @@ class FileUploaderApp(QMainWindow):
 
         self.dropdown_visible = False
         self.widgets_visible = False
+        self.adv_widgets_visible = False
         self.current_file = None
 
         # Set up animation
@@ -395,10 +403,86 @@ class FileUploaderApp(QMainWindow):
             self.file_count += 1
         #self.file_counter_label.setText(f"Files Uploaded: {self.file_count}")
 
+    def advanced_search(self):
+
+        self.clear_widgets()
+        cmp = self.compound_input_box.text()
+        cpt = self.compartment_input_box.text()
+
+        if cmp == "" and cpt == "":
+            return
+
+        if cpt == "":
+            models = self.database.search_for_compound(cmp)
+        elif cmp == "":
+            models = self.database.search_for_compartment(cpt)
+        else:
+            models = self.database.search_compound_in_compartment(compound=cmp, compartment=cpt)
+        
+        if models is None:
+            models = ["NO MATCHING MODELS"]
+        
+        self.toggle_adv_search(models)
+        
+
+
+    def toggle_adv_search(self, models):
+        if self.adv_widgets_visible:
+            self.clear_widgets()
+        else:
+            self.adv_add_widgets(models)
+            
+        self.adv_widgets_visible = not self.adv_widgets_visible
+
+    def adv_add_widgets(self, models):
+        for model in models:
+            widget = QWidget()
+            widget.setFixedHeight(70)  # Set only the height to be fixed
+            widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            label = QLabel(model)
+            
+            widget.setStyleSheet("""
+                QWidget {
+                    background-color: #111c11;
+                    border-radius: 5px;
+                    margin: 2px;
+                    padding: 5px;
+                }
+            """)
+
+            layout = QHBoxLayout(widget)
+            layout.addWidget(label)
+            layout.addWidget(QWidget())  # Spacer
+            layout.addWidget(QWidget())  # Spacer
+            button = QPushButton("View graph in browser")
+            #button.setFont(QFont("Arial",20))
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #1a301a;
+                    padding: 10px 10px;
+                    color: white;
+                    font-size: 10px;
+                    border: none;
+                }
+                                 
+                QPushButton:hover {
+                background-color: #213d20;
+                }
+                                 """)
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            #button.clicked.connect(lambda: self.veiwGraph(pair[0]))
+            button.clicked.connect(lambda checked, x = model:self.veiwGraph(x))
+
+            layout.addWidget(button)
+            self.content_layout.addWidget(widget)
+
+
     def perform_search(self):
         search_term = self.search_bar.text()
         print(f"Searching for: {search_term}")
         self.clear_widgets()
+
+        self.model_ID = search_term
 
         # Implement your search logic here
         if self.database.check_model_exists(search_term):
@@ -426,13 +510,12 @@ class FileUploaderApp(QMainWindow):
             
         self.widgets_visible = not self.widgets_visible
 
+
     def add_widgets(self):
 
         similar_models = self.database.find_all_similar(self.model_ID, 5)
-        print(self.model_ID)
 
         for pair in similar_models:
-            print(pair[0])
             widget = QWidget()
             widget.setFixedHeight(70)  # Set only the height to be fixed
             widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -519,13 +602,10 @@ class FileUploaderApp(QMainWindow):
                                  """)
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
             #button.clicked.connect(lambda: self.veiwGraph(pair[0]))
-            button.clicked.connect(lambda: self.printtest(pair[0]))
+            button.clicked.connect(lambda checked, x = pair[0]:self.veiwGraph(x))
 
             layout.addWidget(button)
             self.content_layout.addWidget(widget)
-
-    def printtest(self, string):
-        print(string)
 
     def clear_widgets(self):
         while self.content_layout.count():
@@ -546,7 +626,6 @@ class FileUploaderApp(QMainWindow):
             self.current_file = None
         else:
             self.file_name_label.setText(file_name)
-            #print(file_name)
             self.model_ID = file_name
             self.file_display.show()
             self.clear_widgets()

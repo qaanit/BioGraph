@@ -371,6 +371,20 @@ class SbmlDatabase:
         self.arr = arrows.Arrows.from_json(path=modelisation_path)
 
 
+    def find_all_models(self) -> list:
+        query = f"""
+                MATCH (m:Model) Return (m.tag);
+                """
+
+        all_models = []
+        result = self.connection.query(query, expect_data=True)
+
+        for model in result:
+            all_models.append(model["(m.tag)"])
+
+        # Remove merged models whose tag is the same 
+        return sorted(list(set(all_models)))
+
 if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
@@ -387,12 +401,16 @@ if __name__ == "__main__":
     # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
     database = SbmlDatabase("localhost.ini", "biomodels", "default_schema.json")
     database.import_models(model_list=models)
-    # Search for compund
+    
+    # Find all models
+    print(database.find_all_models())
+    
     database.merge_biomodels("BIOMD0000000003", "BIOMD0000000004")
     database.load_and_import_model("BIOMD0000000003")
     database.load_and_import_model("BIOMD0000000004")
     database.load_and_import_model("BIOMD0000000005")
 
+    # Search for compund
     print(database.search_for_compound("C"))
     
     # Search for compartment

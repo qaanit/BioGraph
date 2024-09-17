@@ -5,6 +5,7 @@ from SbmlDatabase import SbmlDatabase
 """"
 These tests are to be done everytime database is modified to make sure all changes do not affect others
 The database shoud be loaded with 10 models BIOMD0 to 10
+When a new function is added to database, write a unit test below for it 
 """
 
 class TestSbmlDatabase(unittest.TestCase):
@@ -12,7 +13,16 @@ class TestSbmlDatabase(unittest.TestCase):
     def setUp(self):
         """ Set up a mock database instance before each test """
         self.database = SbmlDatabase("localhost.ini", "biomodels", "default_schema.json")
-    
+
+    @patch('SbmlDatabase.connect')
+    def test_find_all_models(self, mock_connect):
+        """Makes sure database can find all models it contains"""
+        mock_connect.return_value = MagicMock()
+        mock_connect().run_query.return_value = []
+        result = self.database.find_all_models()
+        self.assertEqual(result, ['BIOMD0000000001', 'BIOMD0000000002', 'BIOMD0000000003-BIOMD0000000004', 'BIOMD0000000004',
+                                                  'BIOMD0000000005', 'BIOMD0000000006', 'BIOMD0000000007', 'BIOMD0000000008', 'BIOMD0000000009', 'BIOMD0000000010'])
+        
     @patch('SbmlDatabase.connect')
     def test_delete_model(self, mock_connect):
         """ Test deleting a model from the database """
@@ -54,7 +64,7 @@ class TestSbmlDatabase(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_connect().run_query.return_value = ["Model1", "Model2"]
         result = self.database.search_for_compound("C")
-        self.assertEqual(sorted(result), sorted(['BIOMD0000000004', 'BIOMD0000000003']))
+        self.assertEqual(sorted(result), sorted(['BIOMD0000000003', 'BIOMD0000000004', 'BIOMD0000000008']))
 
 
     @patch('SbmlDatabase.connect')

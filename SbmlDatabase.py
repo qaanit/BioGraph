@@ -1,5 +1,6 @@
 from neo4jsbml import arrows, connect, sbml
 from BiomodelsDownloader import BiomodelsDownloader
+from SbmlDatabaseQueries import SbmlDatabaseQueries
 import os
 
 
@@ -68,7 +69,7 @@ class SbmlDatabase:
         self.modelisation_path = modelisation_path
         self.connection = connect.Connect.from_config(path=config_path) # Connection object to interact with the Neo4j database.
         self.arr = arrows.Arrows.from_json(path=modelisation_path)
-        
+        self.sbmlQueries = SbmlDatabaseQueries(connection=self.connection)
 
     def load_and_import_model(self, model_id) -> None:
         """
@@ -159,211 +160,55 @@ class SbmlDatabase:
 
 
     def check_model_exists(self, model_id) -> bool:
-
         """
-        Query the current database, to see if model exists
-            -- used to removed old models when it is updated
-            -- prevent duplicate models
-
-        Return:
-            bool: True if model is found, False if not found
+        Returns True if models is in database otherwise False
+            - Refer to SbmlDatabaseQueries.check_model_exists() for implementation details
         """
-
-        query = f"""MATCH (n) WHERE n.tag="{model_id}" RETURN (n)"""
+        return self.sbmlQueries.check_model_exists(model_id)
         
-        result = self.connection.query(query, expect_data=True)
-        
-        # Empty results
-        if not result:
-            return False
-        
-        return True
-
     
     def delete_model(self, model_id) -> None:
         """
         Queries database to delete a model based on tag
-            -- deletes all nodes and relationships belonging to a node is 
+            - deletes all nodes and relationships belonging to a node
         """
-
         query = f"""MATCH (n) WHERE n.tag="{model_id}" DETACH DELETE n"""
         self.connection.query(query, expect_data=False)
         
     
     def compare_models(self, model_id1, model_id2) -> int:
         """
-        This Graph mathcing algorithm compares the similarity between two biomodels in graph format and returns a similarity score. 
-        ONlY WORKS ON NON MERGED GRAPHS
-        Works in a single query by taking into account, structure of the graph and node data as follows:
-            1) Select weighting of structure vs child nodes
-            2) Get/Match the two models being compared
-            3) Count the nodes and relationships of each model -> traversal handled by neo4j
-            4) Structural similarity is calculated by diffence in nodes and relationships independantly
-            5) Child node similarity is the combination of nodes and edges/relationships eg. A HAS_SPECIES B
-            6) This is compared by mathing lists of these relationships to each other
-            7) The final similarity score is the weighted sum of structure and child nodes similarity
-
-        Return:
-            int: Similarity score calculation of two models. Accuracy between 0 and 1
+        Returns accuracy score percentage based on similarity between models
+            - Refer to SbmlDatabaseQueries.compare_models() for implementation details
         """
-
-        STRUCTURE_WEIGHTING = 0.5
-        CHILDREN_WEIGHTING = 0.5
-
-        query = f"""
-            // Define parameters for the two graphs to compare
-            WITH '{model_id1}' AS graph1_id, '{model_id2}' AS graph2_id
-
-            // Define weights for different similarity aspects (adjust as needed)
-            WITH graph1_id, graph2_id,
-                {STRUCTURE_WEIGHTING} AS w_structure,
-                {CHILDREN_WEIGHTING} AS w_children
-
-            // Compare nodes
-            MATCH (n1:Model {{tag: graph1_id}})
-            MATCH (n2:Model {{tag: graph2_id}})
-
-            // Compare number of nodes and relationships
-            WITH n1, n2, w_structure, w_children,
-                count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n1_elements,
-                count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]->(_)}} AS n2_elements,
-                count{{(n1)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n1_relationships,
-                count{{(n2)-[:HAS_COMPARTMENT|HAS_UNITDEFINITION|HAS_SPECIES|HAS_REACTION*]-(_)}} AS n2_relationships
-
-            // Calculate structural similarity
-            WITH n1, n2, w_structure, w_children,
-                CASE WHEN n1_elements = n2_elements AND n1_relationships = n2_relationships THEN 1.0
-                    ELSE (
-                        (1.0 - abs(n1_elements - n2_elements) / toFloat(n1_elements + n2_elements)) * 0.5 +
-                        (1.0 - abs(n1_relationships - n2_relationships) / toFloat(n1_relationships + n2_relationships)) * 0.5
-                    )
-                END AS structural_similarity
-
-            // Compare child nodes (Compartments, Species, Reactions, etc.)
-            MATCH (n1)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child1)
-            MATCH (n2)-[:HAS_COMPARTMENT|HAS_SPECIES|HAS_REACTION]->(child2)
-            WHERE labels(child1) = labels(child2)
-
-            WITH n1, n2, w_structure, w_children,
-                structural_similarity,
-                collect(child1) AS children1, collect(child2) AS children2
-
-            // Calculate child node similarity
-            WITH n1, n2, w_structure, w_children,
-                structural_similarity,
-                children1, children2,
-                size(children1) AS total_children
-
-            UNWIND children2 AS c2
-            WITH n1, n2, w_structure, w_children,
-                structural_similarity,
-                children1, total_children, collect(c2.id) AS children2_ids
-
-            // calculation
-            WITH n1, n2, w_structure, w_children,
-                structural_similarity,
-                total_children,
-                CASE WHEN total_children > 0
-                    THEN toFloat(size([c1 IN children1 WHERE c1.id IN children2_ids])) / total_children
-                    ELSE 1.0
-                END AS children_similarity
-
-            // Calculate final similarity score
-            WITH 
-                structural_similarity * w_structure +
-                children_similarity * w_children
-                AS similarity_score
-
-            RETURN similarity_score
-            """
-
-        result = self.connection.query(query, expect_data=True) # this accuracy is not parsed
-        if result == []: return 0
-        accuracy = result[0]['similarity_score']
-
+        accuracy = self.sbmlQueries.compare_models(model_id1=model_id1, model_id2=model_id2)
         return accuracy
     
 
     def search_for_compartment(self, compartment) -> list:
         """
-        Queries Database to find all models that has constains a specific compartment.
-            
-        Return:
-            list: A list of all unique matching models
+            Returns list of models that have a certain compartment
+            - Refer to SbmlDatabaseQueries.search_for_compartment() for implementation details
         """
-
-        query = f"""
-                MATCH (m:Model)-[:HAS_COMPARTMENT]->(c:Compartment)
-                WHERE c.id = "{compartment}"
-                RETURN m
-                """
-        result = self.connection.query(query, expect_data=True)
-
-        if not result:
-            print("No models found")
-            return
-    
-        matching_models = set()
-
-        for model in result:
-            matching_models.add(model["m"]["name"])
-
-        return list(matching_models)
-
+        matching_models = self.sbmlQueries.search_for_compartment(compartment)
+        return matching_models
 
     def search_for_compound(self, compound) -> list:
         """
-            Queries Database to find all models that has a contains a specific species/compound.
-            
-            Return:
-                list: A list of all unique matching models
+            Returns list of models that have a certain compund
+            - Refer to SbmlDatabaseQueries.search_for_compound() for implementation details
         """
-
-        query = f"""
-                MATCH (m:Model)-[:HAS_SPECIES]->(s:Species)
-                WHERE s.id = "{compound}"
-                RETURN m
-                """
-        result = self.connection.query(query, expect_data=True)
-
-        if not result:
-            print("No models found")
-            return
-        
-        matching_models = set()
-
-        for model in result:
-            matching_models.add(model["m"]["name"])
-
-        return list(matching_models)
+        matching_models = self.sbmlQueries.search_for_compund(compound)
+        return matching_models
 
 
     def search_compound_in_compartment(self, compound, compartment) -> list:
         """
-        Queries Database to find all models that has contains a specific species in a specific compartment.
-            
-        Return:
-            list: A list of all unique matching models
+            Returns list of models that have a certain compund
+            - Refer to SbmlDatabaseQueries.search_for_compound_in_compartment() for implementation details
         """
-
-        query = f"""
-                MATCH (m:Model)-[:HAS_SPECIES]->(s:Species)-[:IN_COMPARTMENT]->(c:Compartment)
-                WHERE s.id = "{compound}" AND c.id = "{compartment}"
-                RETURN m
-                """
-
-        result = self.connection.query(query, expect_data=True)
-
-        if not result:
-            print("No models found")
-            return
-        
-        matching_models = set()
-
-        for model in result:
-            matching_models.add(model["m"]["name"])
-
-        return list(matching_models)
+        matching_models = self.sbmlQueries.search_for_compound_in_compartment(compound, compartment)
+        return matching_models
 
 
     def change_schema(self, modelisation_path):
@@ -382,41 +227,23 @@ class SbmlDatabase:
 
 
     def find_all_models(self) -> list:
-        """Returns a list of all models present in the database"""
-
-        query = f"""
-                MATCH (m:Model) Return (m.tag);
-                """
-
-        all_models = []
-        result = self.connection.query(query, expect_data=True)
-
-        for model in result:
-            all_models.append(model["(m.tag)"])
-
-        # Remove merged models whose tag is the same 
-        return sorted(list(set(all_models)))
+        """
+            Returns list of all models in database
+            - Refer to SbmlDatabaseQueries.find_all_models() for implementation details
+        """
+        all_models = self.sbmlQueries.find_all_models()
+        return all_models
 
 
     def find_all_similar(self, model_id, MODEL_LIMIT=-1) -> tuple:
-        """DOCS"""
-
-        similar_models = []
-        all_models = self.find_all_models()
-
-        for model in all_models:
-            if "-" in model: continue
-
-            accuracy = self.compare_models(model_id, model)
-            similar_models.append((model, round(accuracy * 100, 2)))
-        
-        similar_models = sorted(similar_models, key=lambda x: x[1], reverse=True)
-
-        if MODEL_LIMIT != -1:
-            return similar_models[:MODEL_LIMIT]
-
+        """
+            Returns list of models that have the highest similartiy with a model provided
+                -- returns a list of tuples containing (model_id, accuracy)
+            - Refer to SbmlDatabaseQueries.find_all_similar() for implementation details
+        """
+        similar_models = self.sbmlQueries.find_all_similar(model_id=model_id, MODEL_LIMIT=MODEL_LIMIT)
         return similar_models
-    
+
 
 if __name__ == "__main__":
 

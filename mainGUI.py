@@ -7,7 +7,8 @@ from SbmlDatabase import SbmlDatabase
 from BiomodelsDownloader import BiomodelsDownloader
 from visualize import GraphVisualizer
 
-class FileUploaderApp(QMainWindow):
+
+class BioGraphGUI(QMainWindow):
 
     def __init__(self):
         super().__init__()
@@ -62,13 +63,6 @@ class FileUploaderApp(QMainWindow):
         top_bar_layout.setStretchFactor(app_name_label, 30)
         top_bar.setStyleSheet("background-color: #0c120c; color: white; border: 0px solid black; border-radius: 1px")
         
-        # Advanced Search Button
-        self.dropdown_button = QPushButton("Advanced search")
-        self.dropdown_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
-        self.dropdown_button.clicked.connect(self.toggle_dropdown)
-        top_bar_layout.addWidget(self.dropdown_button)
-        top_bar_layout.setStretchFactor(self.dropdown_button, 5)
-
         # Schema Button
         dropdown_label = QLabel(" Schema:")
         self.schema_dropdown = QComboBox()
@@ -78,7 +72,14 @@ class FileUploaderApp(QMainWindow):
         top_bar_layout.addWidget(dropdown_label)
         top_bar_layout.addWidget(self.schema_dropdown)
         top_bar_layout.setStretchFactor(self.schema_dropdown, 5)
+        top_bar_layout.addWidget(QPushButton())
 
+        # Advanced Search Button
+        self.dropdown_button = QPushButton("Advanced search")
+        self.dropdown_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
+        self.dropdown_button.clicked.connect(self.toggle_dropdown)
+        top_bar_layout.addWidget(self.dropdown_button)
+        top_bar_layout.setStretchFactor(self.dropdown_button, 5)
 
         # Merge Button 
         self.merge_button = QPushButton("Merge")
@@ -87,13 +88,13 @@ class FileUploaderApp(QMainWindow):
         top_bar_layout.addWidget(self.merge_button)
         top_bar_layout.setStretchFactor(self.merge_button, 5)
 
-        # Extra buttons -- no functionality
-        buttons = ["Files", "Users", "Settings"]
-        for button_text in buttons:
-            button = QPushButton(button_text)
-            button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
-            top_bar_layout.addWidget(button)
-            top_bar_layout.setStretchFactor(button, 5)
+        # list all files Button
+        self.dropdown_button = QPushButton("All models")
+        self.dropdown_button.setStyleSheet("QPushButton{ background-color: #0c120c; color: white; border-radius: 2px; padding: 10px; font-size: 12px; border-radius: 3px} QPushButton:hover{ background-color: #111c11 }")
+        self.dropdown_button.clicked.connect(self.toggle_all_models_widgets)
+        top_bar_layout.addWidget(self.dropdown_button)
+        top_bar_layout.setStretchFactor(self.dropdown_button, 5)
+
         main_layout.addWidget(top_bar)
 
         # Main content area
@@ -127,8 +128,10 @@ class FileUploaderApp(QMainWindow):
         """)
         left_layout.addWidget(upload_button)
 
-        # File list
+        # Modify the file list setup
         self.file_list = QListWidget()
+        self.file_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.file_list.customContextMenuRequested.connect(self.show_context_menu)
         self.file_list.itemClicked.connect(self.toggle_file_display)
         self.file_list.setStyleSheet("QListWidget{ background-color: #0c120c; border: none}")
         left_layout.addWidget(QLabel("Uploaded Files:"))
@@ -465,6 +468,7 @@ class FileUploaderApp(QMainWindow):
         self.merge_visible = False
         self.widgets_visible = False
         self.adv_widgets_visible = False
+        self.all_widgets_visible = False
         self.current_file = None
 
         # Set up animation
@@ -482,22 +486,62 @@ class FileUploaderApp(QMainWindow):
         self.database.change_schema("Schemas/" + text + ".json")
 
     def upload_files(self):
-        """Add file to database"""
 
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files to Upload", "", "XML Files (*.xml)")
+        names = ""
 
         for file_path in files:
             file_name = file_path.split("/")[-1] # Strip folder 
             self.database.load_and_import_model(file_name[:-4]) # Strip file extension and import to database
-            QMessageBox.information(self, "Success", f"{file_name} has been successfully uploaded to the database.")
+            names += f"{file_name[:-4]}, "
             self.file_list.addItem(file_name)
             self.file_count += 1
+
+        QMessageBox.information(self, "Success", f"{names} has been successfully uploaded to the database.")
         
+    def show_context_menu(self, position):
+        context_menu = QMenu(self)
+        delete_action = context_menu.addAction("Delete")
+        action = context_menu.exec(self.file_list.mapToGlobal(position))
+        
+        if action == delete_action:
+            item = self.file_list.itemAt(position)
+            if item:
+                self.delete_file(item)
+
+    def delete_file(self, item):
+        file_name = item.text()
+        
+        # Show confirmation dialog
+        reply = QMessageBox.question(self, 'Confirm Deletion',
+                                     f"Are you sure you want to delete {file_name[:-4]}?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+
+        if reply == QMessageBox.StandardButton.Yes:
+            row = self.file_list.row(item)
+            self.file_list.takeItem(row)
+
+            # Remove the file from the database
+            self.database.delete_model(file_name[:-4])
+            
+            QMessageBox.information(self, "Success", f"{file_name[:-4]} has been successfully deleted from the database.")
+            self.file_count -= 1
+
+            # If the deleted file was being displayed, hide the display
+            if self.current_file == file_name[:-4]:
+                self.file_display.hide()
+                self.clear_widgets()
+                self.current_file = None
+        else:
+            QMessageBox.information(self, "Cancelled", f"Deletion of {file_name[:-4]} was cancelled.")
+
 
     def advanced_search(self):
         """Depending on input provided, query model and return matches"""
 
         self.clear_widgets()
+        self.file_display.hide()
         compound = self.compound_input_box.text()
         compartment = self.compartment_input_box.text()
 
@@ -535,6 +579,63 @@ class FileUploaderApp(QMainWindow):
             
         self.adv_widgets_visible = not self.adv_widgets_visible
 
+    def toggle_all_models_widgets(self):
+        if self.all_widgets_visible:
+            self.clear_widgets()
+            
+        else:
+            self.all_models_widgets()
+            
+        self.all_widgets_visible = not self.all_widgets_visible
+
+
+    def all_models_widgets(self):
+
+        self.clear_widgets()
+        self.file_display.hide()
+
+        models = self.database.find_all_models()
+
+        for model in models:
+            widget = QWidget()
+            widget.setFixedHeight(70)  # Set only the height to be fixed
+            widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            label = QLabel(model)
+            
+            widget.setStyleSheet("""
+                QWidget {
+                    background-color: #111c11;
+                    border-radius: 5px;
+                    margin: 2px;
+                    padding: 5px;
+                }
+            """)
+
+            layout = QHBoxLayout(widget)
+            layout.addWidget(label)
+            layout.addWidget(QWidget())  # Spacer
+            layout.addWidget(QWidget())  # Spacer
+            button = QPushButton("View graph in browser")
+            #button.setFont(QFont("Arial",20))
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #1a301a;
+                    padding: 10px 10px;
+                    color: white;
+                    font-size: 10px;
+                    border: none;
+                }
+                                 
+                QPushButton:hover {
+                background-color: #213d20;
+                }
+                                 """)
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            #button.clicked.connect(lambda: self.veiwGraph(pair[0]))
+            button.clicked.connect(lambda checked, x = model:self.veiwGraph(x))
+
+            layout.addWidget(button)
+            self.content_layout.addWidget(widget)
 
     def advanced_search_add_widgets(self, models):
         for model in models:
@@ -676,7 +777,6 @@ class FileUploaderApp(QMainWindow):
     def toggle_dropdown(self):
         """Switch a dropdown menu on or off and animate it"""
 
-        #self.clear_widgets()
         if self.merge_visible: self.merge_dropdown()
 
         if self.dropdown_visible:
@@ -694,7 +794,7 @@ class FileUploaderApp(QMainWindow):
 
         if self.widgets_visible:
             self.clear_widgets()
-            self.add_widgets()
+            #self.add_widgets()
         else:
             self.add_widgets()
             
@@ -725,7 +825,7 @@ class FileUploaderApp(QMainWindow):
                     padding: 0px 0px;
                     font-weight: bold;}
              """)
-            elif (60 <= pair[1] < 80):
+            elif (50 <= pair[1] < 80):
                 perWidget.setStyleSheet("""
                 QWidget {
                     background-color: #111c11;
@@ -736,7 +836,7 @@ class FileUploaderApp(QMainWindow):
                     font-weight: bold;}
              """)
                 
-            elif (30 <= pair[1] <= 60):
+            elif (30 <= pair[1] <= 50):
                 perWidget.setStyleSheet("""
                 QWidget {
                     background-color: #111c11;
@@ -835,6 +935,6 @@ class FileUploaderApp(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = FileUploaderApp()
+    window = BioGraphGUI()
     window.show()
     sys.exit(app.exec())

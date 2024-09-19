@@ -253,8 +253,7 @@ if __name__ == "__main__":
     # returns a list of all new models downloaded or updated
 
     """
-    model.load_and_import_model() # manually add model by file name
-    this is how the user can add their own models / pipeline
+    The following is example usage of the class functionality, should not be used when imported
     """
 
     # Creating Server with given schema, and neo4j configs [folder is where biomodels xml are stored and loaded]
@@ -262,16 +261,16 @@ if __name__ == "__main__":
     database = SbmlDatabase("localhost.ini", "biomodels", "Schemas/default_schema.json")
     database.import_models(model_list=models)
     database.merge_biomodels("BIOMD0000000003", "BIOMD0000000004")
+
     # Find all models
-    # print(database.find_all_models())
-    """
+    # Test loading
+    print(database.find_all_models())
     print(database.find_all_similar("BIOMD0000000001", 5))
-    exit()
-    
     database.load_and_import_model("BIOMD0000000003")
     database.load_and_import_model("BIOMD0000000004")
     database.load_and_import_model("BIOMD0000000005")
     database.delete_model("BIOMD0000000003-BIOMD0000000004")
+
     # Search for compund
     print(database.search_for_compound("C"))
     
@@ -284,14 +283,12 @@ if __name__ == "__main__":
     # Compare two models using graph traversal algorithms
     print(database.compare_models("BIOMD0000000003", "BIOMD0000000004"))
 
-    
-
     # test for up   dating models
-    #database.import_models(["BIOMD0000000001"])
+    database.import_models(["BIOMD0000000001"])
 
     # Test to see if load_and_import, delete_model and check_model_exists()
-    # database.load_and_import_model("BIOMD0000000001")
-    #print(database.check_model_exist("BIOMD0000000001"))
-    # database.delete_model("BIOMD0000000001")
-    #print(database.check_model_exists("BIOMD0000000001"))
-    """
+    database.load_and_import_model("BIOMD0000000001")
+    print(database.check_model_exist("BIOMD0000000001"))
+    database.delete_model("BIOMD0000000001")
+    print(database.check_model_exists("BIOMD0000000001"))
+    

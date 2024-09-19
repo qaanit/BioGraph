@@ -11,8 +11,7 @@ This project enables users to create a pipeline of SBML (Systems Biology Markup 
 Based on the dependency of neo4jsbl, a conda environment is required.
 
 ```
-conda create -n sbml_neo4j python=3.9
-conda activate sbml_neo4j
+conda install -c conda-forge neo4jsbml
 ```
 
 ### Python Dependencies
@@ -34,7 +33,7 @@ pip install -r requirements.txt
 The main project can be cloned directly from the GitLab repository or downloaded:
 
 ```
-git clone <repository_url>
+git clone https://gitlab.cs.uct.ac.za/prkraa002/capstone
 ```
 
 Note: Pulls/Forks need to be authorized by owners for changes.

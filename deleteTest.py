@@ -7,31 +7,6 @@ from SbmlDatabase import SbmlDatabase
 from BiomodelsDownloader import BiomodelsDownloader
 from visualize import GraphVisualizer
 
-class FileItemWidget(QWidget):
-    def __init__(self, file_name, parent=None):
-        super().__init__(parent)
-        layout = QHBoxLayout(self)
-        self.file_label = QLabel(file_name)
-        self.delete_button = QPushButton()
-        self.delete_button.setIcon(QIcon("icons8-delete-24.png"))
-        self.delete_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.delete_button.setStyleSheet("""
-            QPushButton {
-                background-color: #0c120c;
-                color: white;
-                border: none;
-                padding: 5px;
-                font-size: 12px;
-                border-radius: 3px;
-            }
-            QPushButton:hover {
-                background-color: #A52A2A;
-            }
-        """)
-        layout.addWidget(self.file_label)
-        layout.addWidget(self.delete_button)
-        layout.setContentsMargins(0, 0, 0, 0)
-
 
 class FileUploaderApp(QMainWindow):
 
@@ -153,9 +128,11 @@ class FileUploaderApp(QMainWindow):
         """)
         left_layout.addWidget(upload_button)
 
-        # File list
+        # Modify the file list setup
         self.file_list = QListWidget()
-        #self.file_list.itemClicked.connect(self.toggle_file_display)
+        self.file_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.file_list.customContextMenuRequested.connect(self.show_context_menu)
+        self.file_list.itemClicked.connect(self.toggle_file_display)
         self.file_list.setStyleSheet("QListWidget{ background-color: #0c120c; border: none}")
         left_layout.addWidget(QLabel("Uploaded Files:"))
         left_layout.addWidget(self.file_list)
@@ -511,45 +488,49 @@ class FileUploaderApp(QMainWindow):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Files to Upload", "", "XML Files (*.xml)")
 
         for file_path in files:
-            file_name = file_path.split("/")[-1]  # Strip folder
-            self.database.load_and_import_model(file_name[:-4])  # Strip file extension and import to database
+            file_name = file_path.split("/")[-1] # Strip folder 
+            self.database.load_and_import_model(file_name[:-4]) # Strip file extension and import to database
             QMessageBox.information(self, "Success", f"{file_name} has been successfully uploaded to the database.")
-            
-            # Create a custom widget for the file item
-            item_widget = FileItemWidget(file_name)
-            item_widget.delete_button.clicked.connect(lambda checked, name=file_name: self.delete_file(name))
-            
-            # Create a QListWidgetItem and set its size hint
-            item = QListWidgetItem(self.file_list)
-            item.setSizeHint(item_widget.sizeHint())
-            
-            # Add the item to the list and set the custom widget
-            self.file_list.addItem(item)
-            self.file_list.setItemWidget(item, item_widget)
-            
+            self.file_list.addItem(file_name)
             self.file_count += 1
         
-
-    def delete_file(self, file_name):
-        # Find and remove the item from the list
-        for index in range(self.file_list.count()):
-            item = self.file_list.item(index)
-            widget = self.file_list.itemWidget(item)
-            if widget.file_label.text() == file_name:
-                self.file_list.takeItem(index)
-                break
-
-        # Remove the file from the database
-        self.database.delete_model(file_name[:-4])  # Assuming the database uses the file name without extension
+    def show_context_menu(self, position):
+        context_menu = QMenu(self)
+        delete_action = context_menu.addAction("Delete")
+        action = context_menu.exec(self.file_list.mapToGlobal(position))
         
-        QMessageBox.information(self, "Success", f"{file_name} has been successfully deleted from the database.")
-        self.file_count -= 1
+        if action == delete_action:
+            item = self.file_list.itemAt(position)
+            if item:
+                self.delete_file(item)
 
-        # If the deleted file was being displayed, hide the display
-        if self.current_file == file_name[:-4]:
-            self.file_display.hide()
-            self.clear_widgets()
-            self.current_file = None
+    def delete_file(self, item):
+        file_name = item.text()
+        
+        # Show confirmation dialog
+        reply = QMessageBox.question(self, 'Confirm Deletion',
+                                     f"Are you sure you want to delete {file_name}?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+
+        if reply == QMessageBox.StandardButton.Yes:
+            row = self.file_list.row(item)
+            self.file_list.takeItem(row)
+
+            # Remove the file from the database
+            self.database.delete_model(file_name[:-4])
+            
+            QMessageBox.information(self, "Success", f"{file_name} has been successfully deleted from the database.")
+            self.file_count -= 1
+
+            # If the deleted file was being displayed, hide the display
+            if self.current_file == file_name[:-4]:
+                self.file_display.hide()
+                self.clear_widgets()
+                self.current_file = None
+        else:
+            QMessageBox.information(self, "Cancelled", f"Deletion of {file_name} was cancelled.")
+
 
     def advanced_search(self):
         """Depending on input provided, query model and return matches"""

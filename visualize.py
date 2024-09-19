@@ -6,6 +6,9 @@ import random
 import configparser
 
 class GraphVisualizer:
+
+    """Visulizes a Graph in a matplotlib pyplot from a neo4j database"""
+
     def __init__(self):
         self.graph = None
         self.G = nx.MultiDiGraph()

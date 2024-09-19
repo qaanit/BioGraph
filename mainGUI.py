@@ -488,7 +488,8 @@ class FileUploaderApp(QMainWindow):
 
         for file_path in files:
             file_name = file_path.split("/")[-1] # Strip folder 
-            self.database.load_and_import_model(file_name[:-4]) # Strip file extension
+            self.database.load_and_import_model(file_name[:-4]) # Strip file extension and import to database
+            QMessageBox.information(self, "Success", f"{file_name} has been successfully uploaded to the database.")
             self.file_list.addItem(file_name)
             self.file_count += 1
         

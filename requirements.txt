@@ -1,0 +1,6 @@
+requests
+pyqt6
+py2neo
+networkx
+matplotlib
+neo4jsbml

@@ -484,7 +484,7 @@ class FileUploaderApp(QMainWindow):
     def upload_files(self):
         """Add file to database"""
 
-        files, _ = QFileDialog.getOpenFileNames(self, "Select Files to Upload")
+        files, _ = QFileDialog.getOpenFileNames(self, "Select Files to Upload", "", "XML Files (*.xml)")
 
         for file_path in files:
             file_name = file_path.split("/")[-1] # Strip folder 
@@ -528,6 +528,7 @@ class FileUploaderApp(QMainWindow):
 
         if self.adv_widgets_visible:
             self.clear_widgets()
+            
         else:
             self.advanced_search_add_widgets(models)
             
@@ -692,6 +693,7 @@ class FileUploaderApp(QMainWindow):
 
         if self.widgets_visible:
             self.clear_widgets()
+            self.add_widgets()
         else:
             self.add_widgets()
             
@@ -704,7 +706,7 @@ class FileUploaderApp(QMainWindow):
 
         for pair in similar_models:
             widget = QWidget()
-            widget.setFixedHeight(70)  # Set only the height to be fixed
+            widget.setFixedHeight(70) 
             widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             label = QLabel(pair[0])
             simLabel = QLabel("similarity match:")
@@ -773,7 +775,7 @@ class FileUploaderApp(QMainWindow):
             layout.addWidget(simLabel)
             layout.addWidget(perWidget)
             button = QPushButton("View graph in browser")
-            #button.setFont(QFont("Arial",20))
+            
             button.setStyleSheet("""
                 QPushButton {
                     background-color: #1a301a;
@@ -833,6 +835,5 @@ class FileUploaderApp(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = FileUploaderApp()
-    #window = LoadingScreen()
     window.show()
     sys.exit(app.exec())

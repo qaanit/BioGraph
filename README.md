@@ -56,7 +56,7 @@ If all details are correct, this is all that's needed to set up the server. If y
 To start the application:
 
 ```
-python main.py
+python bioGraphGUI.py
 ```
 
 On startup, if a database has been set to load in `config.py`, a specified number of BioModels will be downloaded, converted to graphs, and loaded into the Neo4j database automatically. The main GUI will then launch once this is complete.

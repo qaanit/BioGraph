@@ -71,10 +71,10 @@ class SbmlDatabase:
         self.arr = arrows.Arrows.from_json(path=modelisation_path)
         self.sbmlQueries = SbmlDatabaseQueries(connection=self.connection)
 
-    def load_and_import_model(self, model_id) -> None:
+    def load_and_import_model(self, model_id, path=False) -> None:
         """
         Loads an SBML model by index, maps it, and imports it into Neo4j.
-        
+            - path means that the model id contains the whole path and its extension
         NB! Load and import models uses neo4jsbml 
         -- connection is loaded via this package
         -- it uses a single neo4jsbml connection established in the constructor
@@ -89,7 +89,11 @@ class SbmlDatabase:
             print(f"Deleting old model {model_id}")
 
         # ADD NEW MODELS
-        path_model = self.folder + "/" + model_id + ".xml"
+        if not path:
+            path_model = self.folder + "/" + model_id + ".xml"
+        else:
+            path_model = model_id 
+
         tag = model_id 
         sbm = sbml.SbmlToNeo4j.from_sbml(path=path_model, tag=tag)
 

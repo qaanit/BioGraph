@@ -6,17 +6,16 @@ This project allows a user to create a pipeline of sbml models, from an existing
 INSTALLATION: 
 
 Conda environment: Based on the dependency of neo4jsbl, a conda environment is required. 
+conda install -c conda-forge neo4jsbml
 
 Python Dependencies, these are all listed in the requirements.txt: 
+pip install -r requirements.txt
 
 Requests – for downloading biomodels from biomodels database 
-
 Pyqt6 – for main user interface 
-
 Py2neo, networkx, matplotlib – for graph visualization 
 
 The main project can be cloned directly from the GitLab repository or downloaded. 
-
 Pulls/Forks need to be authorized by owners for changes. 
  
 

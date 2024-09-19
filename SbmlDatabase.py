@@ -249,7 +249,7 @@ if __name__ == "__main__":
 
     # These models are all downloaded from the biomodels database
     downloader = BiomodelsDownloader(threads=5, curatedOnly=True)
-    models = downloader.verifiy_models() # will download all models
+    models = downloader.verifiy_models(10) # will download all models
     # returns a list of all new models downloaded or updated
 
     """
@@ -261,17 +261,17 @@ if __name__ == "__main__":
     # This will convert the sbml to graph format based on provided schema and loads them directly to connected neo4j server
     database = SbmlDatabase("localhost.ini", "biomodels", "Schemas/default_schema.json")
     database.import_models(model_list=models)
-    
+    database.merge_biomodels("BIOMD0000000003", "BIOMD0000000004")
     # Find all models
     # print(database.find_all_models())
-    
+    """
     print(database.find_all_similar("BIOMD0000000001", 5))
     exit()
-    database.merge_biomodels("BIOMD0000000003", "BIOMD0000000004")
+    
     database.load_and_import_model("BIOMD0000000003")
     database.load_and_import_model("BIOMD0000000004")
     database.load_and_import_model("BIOMD0000000005")
-
+    database.delete_model("BIOMD0000000003-BIOMD0000000004")
     # Search for compund
     print(database.search_for_compound("C"))
     
@@ -294,3 +294,4 @@ if __name__ == "__main__":
     #print(database.check_model_exist("BIOMD0000000001"))
     # database.delete_model("BIOMD0000000001")
     #print(database.check_model_exists("BIOMD0000000001"))
+    """

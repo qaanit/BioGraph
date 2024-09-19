@@ -5,7 +5,7 @@ import io
 import os
 
 
-class BiomodelsDownloader: # TODO: some methods uncalled private?
+class BiomodelsDownloader:
     """
     A class to handle the downloading and extraction of model files from the biomodels database.
     A specified amount of zipfiles are downloaded and then extracted to a common folder.
@@ -186,10 +186,5 @@ if __name__ == "__main__":
 
     # create downloder
     downloader = BiomodelsDownloader()
-
-    # all models will be searched for and downloaded if missing/damaged - no need to call run 
-    # TODO: make unused methods private (run)
-    # TODO: non-curated ?? + logic
-
     downloader.verifiy_models()
     downloader.verifiy_models() # second check

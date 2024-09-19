@@ -62,7 +62,7 @@ class SbmlDatabase:
         folder : str
             Directory where the SBML models are stored.
         modelisation_path : str
-            Path to the JSON file defining the modelisation.
+            Path to the JSON file defining the chema/modelisation.
         """
         self.config_path = config_path
         self.folder = folder

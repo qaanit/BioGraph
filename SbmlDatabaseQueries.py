@@ -47,7 +47,7 @@ class SbmlDatabaseQueries():
         
         return True
     
-    def compare_models(self, model_id1, model_id2):
+    def compare_models(self, model_id1, model_id2, structure_weighting = 0.5, children_weighting = 0.5):
         """
         This Graph mathcing algorithm compares the similarity between two biomodels in graph format and returns a similarity score. 
         ONlY WORKS ON NON MERGED GRAPHS
@@ -64,8 +64,8 @@ class SbmlDatabaseQueries():
             int: Similarity score calculation of two models. Accuracy between 0 and 1
         """
 
-        STRUCTURE_WEIGHTING = 0.5
-        CHILDREN_WEIGHTING = 0.5
+        STRUCTURE_WEIGHTING = structure_weighting
+        CHILDREN_WEIGHTING = children_weighting
 
         query = f"""
             // Define parameters for the two graphs to compare

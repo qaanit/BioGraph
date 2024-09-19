@@ -1,8 +1,9 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 import zipfile
 import io
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 class BiomodelsDownloader: # TODO: some methods uncalled private?
     """
@@ -11,7 +12,8 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
     This can be done in parallel depending on the number of threads allocated
     """
 
-    def __init__(self, base_url="https://www.ebi.ac.uk/biomodels/search/download", threads=10, output_dir="biomodels", curatedOnly=True):
+    def __init__(self, base_url="https://www.ebi.ac.uk/biomodels/search/download", meta_data_url = "https://www.ebi.ac.uk/biomodels/model/files/{model}?format=json",
+                  threads=10, output_dir="biomodels", curatedOnly=True):
         """
         Initialize the downloader with the base URL and configuration for downloading.
 
@@ -22,14 +24,13 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
 
         """
         self.base_url = base_url
+        self.metadata_url = meta_data_url
         self.max_workers = threads
         self.output_dir = output_dir
         self.curatedOnly = curatedOnly
         self.curated_models = []
         self.uncurated_models = []
         self.missing_damaged_models = [] 
-
-        # TODO: simplify list data storage
 
         # Ensure output directory exists
         if not os.path.exists(self.output_dir):
@@ -116,7 +117,7 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
 
         # Check if models exists
         counter = 0
-        for model in self.curated_models:   # TODO: Add non-curated - may need to change some logic
+        for model in self.curated_models:
             
             counter += 1
             if (MODEL_LIMIT != -1) and (counter >= MODEL_LIMIT):break
@@ -133,8 +134,8 @@ class BiomodelsDownloader: # TODO: some methods uncalled private?
                     Slows down the verify stage a bit
                 """
                 """  
-                metadata_url = f"https://www.ebi.ac.uk/biomodels/model/files/{model}?format=json"
-                response = requests.get(metadata_url).json()
+                self.metadata_url = f"https://www.ebi.ac.uk/biomodels/model/files/{model}?format=json"
+                response = requests.get(self.metadata_url).json()
                 url_file_size = response["main"][0]["fileSize"]
                 os_file_size = str(os.path.getsize(model_file))
                 
